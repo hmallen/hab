@@ -14,6 +14,12 @@
  * - Light
  * - Accelerometer/Gyroscope/Magnetometer
  * - Barometer (Altitude/Temperature)
+ * 
+ * Relay Control:
+ * #1 --> Pin 7
+ * #2 --> Pin 6
+ * #3 --> Pin 5
+ * #4 --> Pin 4
  */
 
 // Libraries
