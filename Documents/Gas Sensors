@@ -10,5 +10,7 @@ MQ-8: Hydrogen
 MQ-9: Carbon Monoxide, Flammable Gasses
 MQ135: Benzene, Alcohol, Smoke
 
+Burn-in time > 48 hours
+
 Cheap CO2 Meter Using the MQ135 Sensor with AVR ATmega:
 http://davidegironi.blogspot.it/2014/01/cheap-co2-meter-using-mq135-sensor-with.html#.V_Kcm_krLuo
