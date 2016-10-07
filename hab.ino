@@ -47,6 +47,7 @@
    CONSIDERATIONS:
    - Descent/landing triggering
    - Wait until descent/landing to power GPRS
+   - Utilize TinyGPS++ libraries to calculate distance and course from home
 */
 
 // Libraries
@@ -72,6 +73,7 @@ const int relayPin2 = 6;
 const int relayPin3 = 5;
 const int relayPin4 = 4;
 const int smsPowerPin = 22;
+const int gpsReadyLED = 23;
 
 // Analog Pins
 const int lightPin = A0;
@@ -82,6 +84,8 @@ char log_file[] = "hab_log.txt";
 const char smsTargetNum[] = "+12145635266";
 
 // Global variables
+float gpsLat, gpsLng, gpsAlt, gpsSpeed;
+int gpsHdop, gpsAge, gpsCourse;
 float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
 float accelX, accelY, accelZ;
 float gyroX, gyroY, gyroZ;
@@ -145,6 +149,7 @@ void setup() {
   pinMode(relayPin3, OUTPUT); digitalWrite(relayPin3, LOW);
   pinMode(relayPin4, OUTPUT); digitalWrite(relayPin4, LOW);
   pinMode(smsPowerPin, OUTPUT); digitalWrite(smsPowerPin, LOW);
+  pinMode(gpsReadyLED, OUTPUT); digitalWrite(gpsReadyLED, LOW);
 
   Serial.begin(9600); // Debug output
   Serial1.begin(19200); // GPRS communication
@@ -199,6 +204,17 @@ void readAda1604() {
     dofPressure = bmp_event.pressure;
     dofTemp = temperature;
     dofAlt = bmp.pressureToAltitude(seaLevelPressure, dofPressure, dofTemp);
+  }
+}
+
+void readGps() {
+  if (millis() > 5000 && gps.charsProcessed() < 10) {
+    Serial.println("ERROR: not getting any GPS data!");
+    // dump the stream to Serial
+    Serial.println("GPS stream dump:");
+    while (true) // infinite loop
+      if (Serial1.available() > 0) // any data coming in?
+        Serial.write(Serial1.read());
   }
 }
 
