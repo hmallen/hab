@@ -35,18 +35,20 @@
    TO DO:
    - Consider setting sampling rate based on theoretical ascent rate
    - Integrate GPRS
-   - GPS
-   - SHT11
-   - Light
-   - Data logging
+   - Error logging (add new and change serial prints to log)
    - Heater
    - Cut-down
    - Buzzer
    - Change global variables to functions returning pointer arrays
+   - Set internal time (or use GPS/GPRS)
+   - Change read data functions to bools to monitor for any errors
+   - Update "last known coordinates" from GPS data if changed
 
    CONSIDERATIONS:
    - Descent/landing triggering
    - Wait until descent/landing to power GPRS
+   OR
+   - **** Power-off gas sensors and power-on GPRS at same time ****
    - Utilize TinyGPS++ libraries to calculate distance and course from home
 */
 
@@ -80,13 +82,15 @@ const int lightPin = A0;
 const int gasPins[] = {A7, A8, A9, A10, A11, A12, A13, A14, A15};
 
 // Constants
-char log_file[] = "hab_log.txt";
+const char log_file[] = "hab_log.txt";
+const char debug_file[] = "hab_debug.txt";
 const char smsTargetNum[] = "+12145635266";
 
 // Global variables
 float gpsLat, gpsLng, gpsAlt, gpsSpeed;
-int gpsHdop, gpsAge, gpsCourse;
-float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
+uint32_t gpsDate, gpsTime, gpsSats, gpsCourse;
+int32_t gpsHdop;
+float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;  // Can this be a const float??
 float accelX, accelY, accelZ;
 float gyroX, gyroY, gyroZ;
 float magX, magY, magZ;
@@ -106,6 +110,8 @@ Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
 Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
 SHT1x sht(shtData, shtClock);
 TinyGPSPlus gps;
+
+boolean debugMode = true;
 
 void initSensors() {
   // Adafruit 1604
@@ -134,6 +140,16 @@ void initSensors() {
     float initShtHumidity = sht.readHumidity();
     delay(100);
   }
+
+  gpsSats = 0;
+  Serial.println("Waiting for lock on 5 GPS satellites...");
+  while (gpsSats < 5) {
+    readGps();
+    Serial.print("Sats: "); Serial.println(gpsSats);
+    delay(5000);
+  }
+  Serial.println("GPS lock attained.");
+  digitalWrite(gpsReadyLED, HIGH);
 }
 
 void powerSMS() {
@@ -159,13 +175,22 @@ void setup() {
   if (!sd.begin(chipSelect, SPI_HALF_SPEED)) {
     sd.initErrorHalt();
   }
-  Serial.println("success.");
+  Serial.println("complete.");
 
+  Serial.println("Initializing sensors.");
   initSensors();
+  Serial.println("Sensor initialization complete.");
 }
 
 void loop() {
-  // Stuff & Things
+  readAda1604();
+  readGps();
+  readGas();
+  readSht();
+  readLight();
+
+  if (!debugMode) logData();
+  else debugSerialPrint();
 }
 
 void readAda1604() {
@@ -208,13 +233,22 @@ void readAda1604() {
 }
 
 void readGps() {
-  if (millis() > 5000 && gps.charsProcessed() < 10) {
-    Serial.println("ERROR: not getting any GPS data!");
-    // dump the stream to Serial
-    Serial.println("GPS stream dump:");
-    while (true) // infinite loop
-      if (Serial1.available() > 0) // any data coming in?
-        Serial.write(Serial1.read());
+  while (Serial2.available() > 0) {
+    if (gps.encode(Serial2.read())) {
+      gpsDate = gps.date.value();
+      gpsTime = gps.time.value();
+      gpsSats = gps.satellites.value();
+      gpsHdop = gps.hdop.value();
+      gpsLat = gps.location.lat();
+      gpsLng = gps.location.lng();
+      gpsAlt = gps.altitude.meters();
+      gpsSpeed = gps.speed.mps();
+      gpsCourse = gps.course.deg();
+    }
+    if (millis() > 5000 && gps.charsProcessed() < 10) {
+      Serial.println("No GPS detected: check wiring."); // MODIFY THIS EXCEPTION
+      //while (true);
+    }
   }
 }
 
@@ -235,15 +269,62 @@ void readLight() {
   lightVal = analogRead(lightPin);
 }
 
-void logData(String dataString) {
+void logData() {
   if (!logFile.open(log_file, O_RDWR | O_CREAT | O_AT_END)) {
-    sd.errorHalt("Opening log file for write failed");
+    sd.errorHalt("Opening debug log for write failed.");
+  }
+  logFile.print(gpsDate); logFile.print(",");
+  logFile.print(gpsTime); logFile.print(",");
+  logFile.print(gpsLat); logFile.print(",");
+  logFile.print(gpsLng); logFile.print(",");
+  logFile.print(gpsSats); logFile.print(",");
+  logFile.print(gpsHdop); logFile.print(",");
+  logFile.print(gpsAlt); logFile.print(",");
+  logFile.print(gpsSpeed); logFile.print(",");
+  logFile.print(gpsCourse); logFile.print(",");
+  logFile.print(accelX); logFile.print(",");
+  logFile.print(accelY); logFile.print(",");
+  logFile.print(accelZ); logFile.print(",");
+  logFile.print(gyroX); logFile.print(",");
+  logFile.print(gyroY); logFile.print(",");
+  logFile.print(gyroZ); logFile.print(",");
+  logFile.print(magX); logFile.print(",");
+  logFile.print(magY); logFile.print(",");
+  logFile.print(magZ); logFile.print(",");
+  logFile.print(dofRoll); logFile.print(",");
+  logFile.print(dofPitch); logFile.print(",");
+  logFile.print(dofHeading); logFile.print(",");
+  logFile.print(dofPressure); logFile.print(",");
+  logFile.print(dofTemp); logFile.print(",");
+  logFile.print(dofAlt); logFile.print(",");
+  for (int x = 0; x < 9; x++) {
+    logFile.print(gasValues[x]); logFile.print(",");
+  }
+  logFile.print(shtTemp); logFile.print(",");
+  logFile.print(shtHumidity); logFile.print(",");
+  logFile.println(lightVal);
+  logFile.close();
+}
+
+void logOther(String dataString) {
+  if (!logFile.open(debug_file, O_RDWR | O_CREAT | O_AT_END)) {
+    sd.errorHalt("Opening debug log for write failed.");
   }
   logFile.println(dataString);
   logFile.close();
 }
 
 void debugSerialPrint() {
+  Serial.print("GPS: ");
+  Serial.print(gpsDate); Serial.print(", ");
+  Serial.print(gpsTime); Serial.print(", ");
+  Serial.print(gpsLat); Serial.print(", ");
+  Serial.print(gpsLng); Serial.print(" ");
+  Serial.print(gpsSats); Serial.print(" Sats ");
+  Serial.print(gpsHdop); Serial.print(" HDOP ");
+  Serial.print(gpsAlt); Serial.print(" meters ");
+  Serial.print(gpsSpeed); Serial.print(" m/s ");
+  Serial.print(gpsCourse); Serial.println(" Course (deg)");
   Serial.print("DOF Accel: ");
   Serial.print(accelX); Serial.print(", ");
   Serial.print(accelY); Serial.print(", ");
@@ -274,4 +355,3 @@ void debugSerialPrint() {
   Serial.print(shtHumidity); Serial.println(" %RH");
   Serial.print("Light: "); Serial.println(lightVal);
 }
-
