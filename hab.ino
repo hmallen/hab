@@ -45,6 +45,7 @@
    - Update "last known coordinates" from GPS data if changed
 
    CONSIDERATIONS:
+   - Update Adafruit 1604 quickly and other sensors more slowly (Add bools to show when update occurs?)
    - Descent/landing triggering
    - Wait until descent/landing to power GPRS
    OR
@@ -65,6 +66,8 @@
 #include <Wire.h>
 
 // Definitions
+#define gpsHdopThreshold 200  // Change to 150 for live conditions
+#define auxDataInterval 10000 // Update interval (ms) for data other than that from Adafruit 1604
 
 // Digital Pins
 const int chipSelect = SS;
@@ -76,6 +79,8 @@ const int relayPin3 = 5;
 const int relayPin4 = 4;
 const int smsPowerPin = 22;
 const int gpsReadyLED = 23;
+const int programStartPin = 24;
+const int programStartLED = 25;
 
 // Analog Pins
 const int lightPin = A0;
@@ -141,12 +146,14 @@ void initSensors() {
     delay(100);
   }
 
-  gpsSats = 0;
-  Serial.println("Waiting for lock on 5 GPS satellites...");
-  while (gpsSats < 5) {
+  Serial.println("Waiting for sufficient GPS HDOP.");
+  while (true) {
     readGps();
-    Serial.print("Sats: "); Serial.println(gpsSats);
-    delay(5000);
+    Serial.print("Sats: "); Serial.print(gpsSats);
+    Serial.print(" / ");
+    Serial.print("HDOP: "); Serial.println(gpsHdop);
+    if (gpsHdop < gpsHdopThreshold && gpsHdop != 0) break;
+    delay(1000);
   }
   Serial.println("GPS lock attained.");
   digitalWrite(gpsReadyLED, HIGH);
@@ -166,11 +173,14 @@ void setup() {
   pinMode(relayPin4, OUTPUT); digitalWrite(relayPin4, LOW);
   pinMode(smsPowerPin, OUTPUT); digitalWrite(smsPowerPin, LOW);
   pinMode(gpsReadyLED, OUTPUT); digitalWrite(gpsReadyLED, LOW);
+  pinMode(programStartLED, OUTPUT); digitalWrite(programStartLED, LOW);
+  pinMode(programStartPin, INPUT_PULLUP);
 
   Serial.begin(9600); // Debug output
   Serial1.begin(19200); // GPRS communication
   Serial2.begin(4800);  // GPS
 
+  Serial.println();
   Serial.print("Initializing SD card...");
   if (!sd.begin(chipSelect, SPI_HALF_SPEED)) {
     sd.initErrorHalt();
@@ -180,17 +190,34 @@ void setup() {
   Serial.println("Initializing sensors.");
   initSensors();
   Serial.println("Sensor initialization complete.");
+  Serial.println();
+  Serial.print("Waiting for program start trigger...");
+  while (true) {
+    if (digitalRead(programStartPin) == 1) break;
+    delay(100);
+  }
+  digitalWrite(programStartLED, HIGH);
+  Serial.println("starting program.");
+  Serial.println();
 }
 
 void loop() {
-  readAda1604();
+  for (unsigned long startTime = millis(); (millis() - startTime) < auxDataInterval; ) {
+    readAda1604();
+    if (debugMode) {
+      debugDofPrint();
+    }
+    delay(1000);
+  }
+  Serial.println();
+
   readGps();
   readGas();
   readSht();
   readLight();
 
   if (!debugMode) logData();
-  else debugSerialPrint();
+  else debugDataPrint();
 }
 
 void readAda1604() {
@@ -233,25 +260,23 @@ void readAda1604() {
 }
 
 void readGps() {
-  while (Serial2.available() > 0) {
-    if (gps.encode(Serial2.read())) {
-      gpsDate = gps.date.value();
-      gpsTime = gps.time.value();
-      gpsSats = gps.satellites.value();
-      gpsHdop = gps.hdop.value();
-      gpsLat = gps.location.lat();
-      gpsLng = gps.location.lng();
-      gpsAlt = gps.altitude.meters();
-      gpsSpeed = gps.speed.mps();
-      gpsCourse = gps.course.deg();
-    }
-    if (millis() > 5000 && gps.charsProcessed() < 10) {
-      Serial.println("No GPS detected: check wiring."); // MODIFY THIS EXCEPTION
-      //while (true);
+  unsigned long startTime = millis();
+
+  while ((millis() - startTime) < 1000) {
+    while (Serial2.available()) {
+      gps.encode(Serial2.read());
     }
   }
+  gpsDate = gps.date.value();
+  gpsTime = gps.time.value();
+  gpsSats = gps.satellites.value();
+  gpsHdop = gps.hdop.value();
+  gpsLat = gps.location.lat();
+  gpsLng = gps.location.lng();
+  gpsAlt = gps.altitude.meters();
+  gpsSpeed = gps.speed.mps();
+  gpsCourse = gps.course.deg();
 }
-
 void readGas() {
   int gasPinLength = sizeof(gasPins) / 2;
   for (int x = 0; x < gasPinLength; x++) {
@@ -266,7 +291,8 @@ void readSht() {
 }
 
 void readLight() {
-  lightVal = analogRead(lightPin);
+  int lightValRaw = 1023 - analogRead(lightPin);
+  lightVal = map(lightValRaw, 0, 1023, 0, 100);
 }
 
 void logData() {
@@ -314,44 +340,54 @@ void logOther(String dataString) {
   logFile.close();
 }
 
-void debugSerialPrint() {
+void debugDofPrint() {
+  Serial.print(dofRoll); Serial.print("(Roll),");
+  Serial.print(dofPitch); Serial.print("(Pitch),");
+  Serial.print(dofHeading); Serial.print("(Heading) / ");
+  Serial.print(dofPressure); Serial.print("hPa,");
+  Serial.print(dofTemp); Serial.print("C,");
+  Serial.print(dofAlt); Serial.println("m");
+}
+
+void debugDataPrint() {
   Serial.print("GPS: ");
-  Serial.print(gpsDate); Serial.print(", ");
-  Serial.print(gpsTime); Serial.print(", ");
-  Serial.print(gpsLat); Serial.print(", ");
+  Serial.print(gpsDate); Serial.print(",");
+  Serial.print(gpsTime); Serial.print(",");
+  Serial.print(gpsLat); Serial.print(",");
   Serial.print(gpsLng); Serial.print(" ");
-  Serial.print(gpsSats); Serial.print(" Sats ");
-  Serial.print(gpsHdop); Serial.print(" HDOP ");
-  Serial.print(gpsAlt); Serial.print(" meters ");
-  Serial.print(gpsSpeed); Serial.print(" m/s ");
-  Serial.print(gpsCourse); Serial.println(" Course (deg)");
+  Serial.print("Sats="); Serial.print(gpsSats); Serial.print(" ");
+  Serial.print("HDOP="); Serial.print(gpsHdop); Serial.print(" ");
+  Serial.print(gpsAlt); Serial.print("m ");
+  Serial.print(gpsSpeed); Serial.print("m/s ");
+  Serial.print(gpsCourse); Serial.println("deg[Course]");
   Serial.print("DOF Accel: ");
-  Serial.print(accelX); Serial.print(", ");
-  Serial.print(accelY); Serial.print(", ");
+  Serial.print(accelX); Serial.print(",");
+  Serial.print(accelY); Serial.print(",");
   Serial.println(accelZ);
   Serial.print("DOF Gyro: ");
-  Serial.print(gyroX); Serial.print(", ");
-  Serial.print(gyroY); Serial.print(", ");
+  Serial.print(gyroX); Serial.print(",");
+  Serial.print(gyroY); Serial.print(",");
   Serial.println(gyroZ);
   Serial.print("DOF Mag: ");
-  Serial.print(magX); Serial.print(", ");
-  Serial.print(magY); Serial.print(", ");
+  Serial.print(magX); Serial.print(",");
+  Serial.print(magY); Serial.print(",");
   Serial.println(magZ);
   Serial.print("DOF AHRS: ");
-  Serial.print(dofRoll); Serial.print(", ");
-  Serial.print(dofPitch); Serial.print(", ");
+  Serial.print(dofRoll); Serial.print(",");
+  Serial.print(dofPitch); Serial.print(",");
   Serial.println(dofHeading);
   Serial.print("DOF Baro: ");
-  Serial.print(dofPressure); Serial.print("hPa, ");
-  Serial.print(dofTemp); Serial.print("C, ");
+  Serial.print(dofPressure); Serial.print("hPa,");
+  Serial.print(dofTemp); Serial.print("C,");
   Serial.print(dofAlt); Serial.println("m");
   Serial.print("Gas Sensors: ");
   for (int x = 0; x < 8; x++) {
-    Serial.print(gasValues[x]); Serial.print(", ");
+    Serial.print(gasValues[x]); Serial.print(",");
   }
   Serial.println(gasValues[8]);
   Serial.print("SHT11: ");
-  Serial.print(shtTemp); Serial.print(" C, ");
-  Serial.print(shtHumidity); Serial.println(" %RH");
-  Serial.print("Light: "); Serial.println(lightVal);
+  Serial.print(shtTemp); Serial.print("C,");
+  Serial.print(shtHumidity); Serial.println("%RH");
+  Serial.print("Light: "); Serial.print(lightVal); Serial.println("%");
+  Serial.println();
 }
