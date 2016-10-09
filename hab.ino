@@ -67,6 +67,7 @@
 
 // Definitions
 #define gpsHdopThreshold 200  // Change to 150 for live conditions
+#define dofDataInterval 500 // Update interval (ms) for Adafruit 1604 data
 #define auxDataInterval 10000 // Update interval (ms) for data other than that from Adafruit 1604
 
 // Digital Pins
@@ -178,7 +179,7 @@ void setup() {
 
   Serial.begin(9600); // Debug output
   Serial1.begin(19200); // GPRS communication
-  Serial2.begin(4800);  // GPS
+  Serial2.begin(9600);  // GPS
 
   Serial.println();
   Serial.print("Initializing SD card...");
@@ -207,7 +208,7 @@ void loop() {
     if (debugMode) {
       debugDofPrint();
     }
-    delay(1000);
+    delay(dofDataInterval);
   }
   Serial.println();
 
@@ -341,11 +342,11 @@ void logOther(String dataString) {
 }
 
 void debugDofPrint() {
-  Serial.print(dofRoll); Serial.print("(Roll),");
-  Serial.print(dofPitch); Serial.print("(Pitch),");
+  Serial.print(dofRoll); Serial.print("(Roll), ");
+  Serial.print(dofPitch); Serial.print("(Pitch), ");
   Serial.print(dofHeading); Serial.print("(Heading) / ");
-  Serial.print(dofPressure); Serial.print("hPa,");
-  Serial.print(dofTemp); Serial.print("C,");
+  Serial.print(dofPressure); Serial.print("hPa, ");
+  Serial.print(dofTemp); Serial.print("C, ");
   Serial.print(dofAlt); Serial.println("m");
 }
 
