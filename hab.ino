@@ -43,14 +43,13 @@
    - Set internal time (or use GPS/GPRS)
    - Change read data functions to bools to monitor for any errors
    - Update "last known coordinates" from GPS data if changed
+   - Utilize TinyGPS++ libraries to calculate distance and course from home
+   - Use GPS "fix" pin output to signal program ready
 
    CONSIDERATIONS:
    - Update Adafruit 1604 quickly and other sensors more slowly (Add bools to show when update occurs?)
    - Descent/landing triggering
-   - Wait until descent/landing to power GPRS
-   OR
-   - **** Power-off gas sensors and power-on GPRS at same time ****
-   - Utilize TinyGPS++ libraries to calculate distance and course from home
+   - Power-off gas sensors and power-on GPRS at same time
 */
 
 // Libraries
