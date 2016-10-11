@@ -45,6 +45,7 @@
    - Update "last known coordinates" from GPS data if changed
    - Utilize TinyGPS++ libraries to calculate distance and course from home
    - Use GPS "fix" pin output to signal program ready
+   - Power SMS during sensor initialization and send test SMS
 
    CONSIDERATIONS:
    - Update Adafruit 1604 quickly and other sensors more slowly (Add bools to show when update occurs?)
