@@ -79,6 +79,7 @@ const int relayPin2 = 6;
 const int relayPin3 = 5;
 const int relayPin4 = 4;
 const int smsPowerPin = 22;
+const int gpsPpsPin = 26;
 const int gpsReadyLED = 23;
 const int programStartPin = 24;
 const int programStartLED = 25;
@@ -93,6 +94,7 @@ const char debug_file[] = "hab_debug.txt";
 const char smsTargetNum[] = "+12145635266";
 
 // Global variables
+bool gpsFix = false;
 float gpsLat, gpsLng, gpsAlt, gpsSpeed;
 uint32_t gpsDate, gpsTime, gpsSats, gpsCourse;
 int32_t gpsHdop;
@@ -147,16 +149,40 @@ void initSensors() {
     delay(100);
   }
 
-  Serial.println("Waiting for sufficient GPS HDOP.");
+  bool gpsPower = false;
+  bool gpsPpsVal;
+  int gpsPpsPulses;
   while (true) {
-    readGps();
-    Serial.print("Sats: "); Serial.print(gpsSats);
-    Serial.print(" / ");
-    Serial.print("HDOP: "); Serial.println(gpsHdop);
-    if (gpsHdop < gpsHdopThreshold && gpsHdop != 0) break;
-    delay(1000);
+    Serial.print("Checking for GPS power...");
+    while (gpsPower == false) {
+      gpsPpsPulses = 0;
+      for (unsigned long startTime = millis(); (millis() - startTime) < 1000; ) {
+        gpsPpsVal = digitalRead(gpsPpsPin);
+        if (gpsPpsVal == true) {
+          gpsPpsPulses++;
+          //Serial.print("GPS PULSES: "); Serial.println(gpsPpsPulses);
+        }
+        delay(100);
+      }
+      if (gpsPpsPulses < 5) gpsPower = true;
+    }
+    Serial.println("GPS powered.");
+    Serial.print("Waiting for GPS fix...");
+    while (gpsFix == false) {
+      gpsPpsPulses = 0;
+      for (unsigned long startTime = millis(); (millis() - startTime) < 6000; ) {
+        gpsPpsVal = digitalRead(gpsPpsPin);
+        if (gpsPpsVal == true) {
+          gpsPpsPulses++;
+          //Serial.print("GPS PULSES: "); Serial.println(gpsPpsPulses);
+        }
+        delay(100);
+      }
+      if (gpsPpsPulses >= 5) gpsFix = true;
+    }
+    Serial.println("GPS fix attained.");
+    break;
   }
-  Serial.println("GPS lock attained.");
   digitalWrite(gpsReadyLED, HIGH);
 }
 
@@ -175,6 +201,7 @@ void setup() {
   pinMode(smsPowerPin, OUTPUT); digitalWrite(smsPowerPin, LOW);
   pinMode(gpsReadyLED, OUTPUT); digitalWrite(gpsReadyLED, LOW);
   pinMode(programStartLED, OUTPUT); digitalWrite(programStartLED, LOW);
+  pinMode(gpsPpsPin, INPUT_PULLUP);
   pinMode(programStartPin, INPUT_PULLUP);
 
   Serial.begin(9600); // Debug output
@@ -278,6 +305,7 @@ void readGps() {
   gpsSpeed = gps.speed.mps();
   gpsCourse = gps.course.deg();
 }
+
 void readGas() {
   int gasPinLength = sizeof(gasPins) / 2;
   for (int x = 0; x < gasPinLength; x++) {
@@ -353,14 +381,14 @@ void debugDofPrint() {
 void debugDataPrint() {
   Serial.print("GPS: ");
   Serial.print(gpsDate); Serial.print(",");
-  Serial.print(gpsTime); Serial.print(",");
+  Serial.print(gpsTime); Serial.print(" ");
   Serial.print(gpsLat); Serial.print(",");
   Serial.print(gpsLng); Serial.print(" ");
   Serial.print("Sats="); Serial.print(gpsSats); Serial.print(" ");
   Serial.print("HDOP="); Serial.print(gpsHdop); Serial.print(" ");
   Serial.print(gpsAlt); Serial.print("m ");
   Serial.print(gpsSpeed); Serial.print("m/s ");
-  Serial.print(gpsCourse); Serial.println("deg[Course]");
+  Serial.print(gpsCourse); Serial.println("deg");
   Serial.print("DOF Accel: ");
   Serial.print(accelX); Serial.print(",");
   Serial.print(accelY); Serial.print(",");
