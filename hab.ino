@@ -33,6 +33,13 @@
    MQ135 --> A15
 
    TO DO:
+   - Add check to confirm GPRS is powered on
+   - Add SMS send/receive confirmation on program start
+   -- Sends test SMS
+   -- Require response for program start
+   -- Power off GPRS when correct response received
+   - Determine SMS functions and create menu
+   - Log incoming/outgoing SMS messages to SD card
    - Change digital pin order for uniformity
    - Consider setting sampling rate based on theoretical ascent rate
    - Integrate GPRS
@@ -45,10 +52,10 @@
    - Change read data functions to bools to monitor for any errors
    - Update "last known coordinates" from GPS data if changed
    - Utilize TinyGPS++ libraries to calculate distance and course from home
-   - Use GPS "fix" pin output to signal program ready
    - Power SMS during sensor initialization and send test SMS
 
    CONSIDERATIONS:
+   - Find function to confirm GPRS is connected to network
    - Use GMT for data logging but include convert function for human-friendly output
    - Update Adafruit 1604 quickly and other sensors more slowly (Add bools to show when update occurs?)
    -- Determine optimal update rate for each
@@ -70,8 +77,9 @@
 
 // Definitions
 #define gpsHdopThreshold 200  // Change to 150 for live conditions
-#define dofDataInterval 500 // Update interval (ms) for Adafruit 1604 data
-#define auxDataInterval 10000 // Update interval (ms) for data other than that from Adafruit 1604
+#define dofDataInterval 250 // Update interval (ms) for Adafruit 1604 data
+#define auxDataInterval 15000 // Update interval (ms) for data other than that from Adafruit 1604
+#define smsPowerDelay 5000  // Delay between power up and sending of commands to GPRS
 
 // Digital Pins
 const int chipSelect = SS;
@@ -189,10 +197,41 @@ void initSensors() {
   digitalWrite(gpsReadyLED, HIGH);
 }
 
-void powerSMS() {
-  digitalWrite(smsPowerPin, HIGH);
-  delay(500);
-  digitalWrite(smsPowerPin, LOW);
+void smsPower(bool powerState) {
+  // Power on GPRS and set proper modes for operation
+  if (powerState == true) {
+    digitalWrite(smsPowerPin, HIGH);
+    delay(500);
+    digitalWrite(smsPowerPin, LOW);
+
+    delay(smsPowerDelay);
+
+    Serial1.println("ATE0");
+    delay(100);
+    Serial1.println("ATQ1");
+    delay(100);
+    Serial1.println("ATV0");
+    delay(100);
+    Serial1.println("AT+CMGF=1");
+    delay(100);
+    Serial1.println("AT+CNMI=2,2,0,0,0");
+    delay(100);
+  }
+
+  // Power off GPRS
+  else {
+    digitalWrite(smsPowerPin, HIGH);
+    delay(1000);
+    digitalWrite(smsPowerPin, LOW);
+  }
+}
+
+bool smsConfirmReady() {
+  // Wait to receive ready confirmation
+  if (Serial1.available()) {
+    // STUFF & THINGS
+  }
+  else return false;
 }
 
 void setup() {
@@ -222,17 +261,46 @@ void setup() {
   initSensors();
   Serial.println("Sensor initialization complete.");
   Serial.println();
+
+  for (int x = 0; x < 5; x++) {
+    digitalWrite(programStartLED, HIGH);
+    delay(500);
+    digitalWrite(programStartLED, LOW);
+    delay(500);
+  }
+
+  // Send startup SMS
+
+  while (true) {
+    // WAIT FOR SMS CONFIRMATION HERE
+    if (smsConfirmReady() == true) {
+      smsPower(false);
+      break;
+    }
+    delay(1000);
+  }
+
+  for (int x = 0; x < 5; x++) {
+    digitalWrite(programStartLED, HIGH);
+    delay(500);
+    digitalWrite(programStartLED, LOW);
+    delay(500);
+  }
+
   Serial.print("Waiting for program start trigger...");
   while (true) {
     if (digitalRead(programStartPin) == 1) break;
     delay(100);
   }
-  digitalWrite(programStartLED, HIGH);
   Serial.println("starting program.");
   Serial.println();
 }
 
 void loop() {
+  normalLoop();
+}
+
+void normalLoop() {
   for (unsigned long startTime = millis(); (millis() - startTime) < auxDataInterval; ) {
     readAda1604();
     if (debugMode) {
