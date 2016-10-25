@@ -33,6 +33,7 @@
    MQ135 --> A15
 
    TO DO:
+   - Change digital pin order for uniformity
    - Consider setting sampling rate based on theoretical ascent rate
    - Integrate GPRS
    - Error logging (add new and change serial prints to log)
@@ -48,7 +49,9 @@
    - Power SMS during sensor initialization and send test SMS
 
    CONSIDERATIONS:
+   - Use GMT for data logging but include convert function for human-friendly output
    - Update Adafruit 1604 quickly and other sensors more slowly (Add bools to show when update occurs?)
+   -- Determine optimal update rate for each
    - Descent/landing triggering
    - Power-off gas sensors and power-on GPRS at same time
 */
@@ -119,7 +122,7 @@ Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
 SHT1x sht(shtData, shtClock);
 TinyGPSPlus gps;
 
-boolean debugMode = true;
+bool debugMode = true;
 
 void initSensors() {
   // Adafruit 1604
