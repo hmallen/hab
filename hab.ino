@@ -33,6 +33,8 @@
    MQ135 --> A15
 
    TO DO:
+   - Log DOF and other data to separate log files
+   - Change #define variables to ALL CAPS
    - Add check to confirm GPRS is powered on
    - Add SMS send/receive confirmation on program start
    -- Sends test SMS
@@ -55,6 +57,8 @@
    - Power SMS during sensor initialization and send test SMS
 
    CONSIDERATIONS:
+   - Create LED flashes to indicate specific startup failure
+   - Check if break in DOF sensor for other data affects reconstruction
    - Find function to confirm GPRS is connected to network
    - Use GMT for data logging but include convert function for human-friendly output
    - Update Adafruit 1604 quickly and other sensors more slowly (Add bools to show when update occurs?)
@@ -81,6 +85,8 @@
 #define auxDataInterval 15000 // Update interval (ms) for data other than that from Adafruit 1604
 #define smsPowerDelay 5000  // Delay between power up and sending of commands to GPRS
 
+const bool debugMode = true;
+
 // Digital Pins
 const int chipSelect = SS;
 const int shtData = 2;
@@ -105,6 +111,8 @@ const char debug_file[] = "hab_debug.txt";
 const char smsTargetNum[] = "+12145635266";
 
 // Global variables
+bool smsReadyReceived = false;
+bool smsFirstFlush = false;
 bool gpsFix = false;
 float gpsLat, gpsLng, gpsAlt, gpsSpeed;
 uint32_t gpsDate, gpsTime, gpsSats, gpsCourse;
@@ -130,25 +138,23 @@ Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
 SHT1x sht(shtData, shtClock);
 TinyGPSPlus gps;
 
-bool debugMode = true;
-
 void initSensors() {
   // Adafruit 1604
   if (!accel.begin()) {
     Serial.println("No LSM303 detected...Check your wiring!");
-    while (true);
+    startupFailure();
   }
   if (!mag.begin()) {
     Serial.println("No LSM303 detected...Check your wiring!");
-    while (true);
+    startupFailure();
   }
   if (!gyro.begin()) {
-    Serial.print("No L3GD20 detected...Check your wiring or I2C address!");
-    while (true);
+    Serial.println("No L3GD20 detected...Check your wiring or I2C address!");
+    startupFailure();
   }
   if (!bmp.begin()) {
     Serial.println("No BMP180 detected...Check your wiring!");
-    while (true);
+    startupFailure();
   }
 
   for (int x = 0; x < 3; x++) {
@@ -163,6 +169,7 @@ void initSensors() {
   bool gpsPower = false;
   bool gpsPpsVal;
   int gpsPpsPulses;
+
   while (true) {
     Serial.print("Checking for GPS power...");
     while (gpsPower == false) {
@@ -226,12 +233,32 @@ void smsPower(bool powerState) {
   }
 }
 
-bool smsConfirmReady() {
-  // Wait to receive ready confirmation
-  if (Serial1.available()) {
-    // STUFF & THINGS
+void smsConfirmReady() {
+  String smsMessageRaw = "";
+  while (smsReadyReceived == false) {
+    if (!Serial1.available()) {
+      while (!Serial1.available()) {
+        digitalWrite(programStartLED, HIGH);
+        delay(100);
+        digitalWrite(programStartLED, LOW);
+        delay(100);
+      }
+    }
+    if (Serial1.available()) {
+      if (smsFirstFlush == false) {
+        smsFlush();
+        smsFirstFlush = true;
+      }
+      else {
+        while (Serial1.available()) {
+          char c = Serial1.read();
+          smsMessageRaw += c;
+          delay(10);
+        }
+        smsHandler(smsMessageRaw, false, true);
+      }
+    }
   }
-  else return false;
 }
 
 void setup() {
@@ -248,7 +275,7 @@ void setup() {
 
   Serial.begin(9600); // Debug output
   Serial1.begin(19200); // GPRS communication
-  Serial2.begin(9600);  // GPS
+  Serial2.begin(9600);  // GPS communication
 
   Serial.println();
   Serial.print("Initializing SD card...");
@@ -260,36 +287,44 @@ void setup() {
   Serial.println("Initializing sensors.");
   initSensors();
   Serial.println("Sensor initialization complete.");
-  Serial.println();
 
-  for (int x = 0; x < 5; x++) {
+  smsPower(true);
+  delay(smsPowerDelay);
+
+  for (int x = 0; x < 2; x++) {
     digitalWrite(programStartLED, HIGH);
-    delay(500);
+    delay(250);
     digitalWrite(programStartLED, LOW);
-    delay(500);
+    delay(250);
   }
 
-  // Send startup SMS
+  Serial1.print("AT+CMGS=\""); Serial1.print(smsTargetNum); Serial1.println("\"");
+  delay(100);
+  Serial1.println("Reply with \"Ready\" to continue.");
+  delay(100);
+  Serial1.println((char)26);
+  delay(100);
+  smsFlush();
 
-  while (true) {
-    // WAIT FOR SMS CONFIRMATION HERE
-    if (smsConfirmReady() == true) {
-      smsPower(false);
-      break;
-    }
-    delay(1000);
-  }
+  Serial.print("Waiting for SMS ready message...");
+  smsConfirmReady();
+  Serial.println("confirmed.");
+  smsPower(false);
+  delay(1000);
 
-  for (int x = 0; x < 5; x++) {
+  for (int x = 0; x < 2; x++) {
     digitalWrite(programStartLED, HIGH);
-    delay(500);
+    delay(250);
     digitalWrite(programStartLED, LOW);
-    delay(500);
+    delay(250);
   }
 
   Serial.print("Waiting for program start trigger...");
   while (true) {
-    if (digitalRead(programStartPin) == 1) break;
+    if (digitalRead(programStartPin) == 1) {
+      digitalWrite(programStartLED, HIGH);
+      break;
+    }
     delay(100);
   }
   Serial.println("starting program.");
@@ -297,10 +332,6 @@ void setup() {
 }
 
 void loop() {
-  normalLoop();
-}
-
-void normalLoop() {
   for (unsigned long startTime = millis(); (millis() - startTime) < auxDataInterval; ) {
     readAda1604();
     if (debugMode) {
@@ -490,4 +521,73 @@ void debugDataPrint() {
   Serial.print(shtHumidity); Serial.println("%RH");
   Serial.print("Light: "); Serial.print(lightVal); Serial.println("%");
   Serial.println();
+}
+
+void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
+  String smsRecNumber = "";
+  String smsMessage = "";
+
+  int numIndex = smsMessageRaw.indexOf('"') + 3;
+  int smsIndex = smsMessageRaw.lastIndexOf('"') + 3;
+
+  for (numIndex; ; numIndex++) {
+    char c = smsMessageRaw.charAt(numIndex);
+    if (c == '"') break;
+    smsRecNumber += c;
+  }
+
+  for (smsIndex; ; smsIndex++) {
+    char c = smsMessageRaw.charAt(smsIndex);
+    if (c == '\n' || c == '\r') break;
+    smsMessage += c;
+  }
+
+  if (smsStartup == true) {
+    if (smsMessage == "Ready") smsReadyReceived = true;
+    else startupFailure();
+  }
+
+  else if (execCommand == true) {
+    int smsCommand = 0;
+
+    if (smsMessage.length() == 1) smsCommand = smsMessage.toInt();
+    else; // Send SMS stating invalid command received (to incoming number)
+
+    // Some sort of "if data available, then proceed to switch case"
+    switch (smsCommand) {
+      case 1:
+        Serial.println("Command #1");
+        break;
+      case 2:
+        // Activate buzzer
+        Serial.println("Command #2");
+        break;
+      case 3:
+        // Trigger smoke signal
+        Serial.println("Command #3");
+        break;
+      default:
+        Serial.print("INVALID COMMAND: ");
+        Serial.println(smsMessage);
+        break;
+    }
+  }
+}
+
+void smsFlush() {
+  if (Serial1.available()) {
+    while (Serial1.available()) {
+      char c = Serial1.read();
+      delay(10);
+    }
+  }
+}
+
+void startupFailure() {
+  while (true) {
+    digitalWrite(gpsReadyLED, LOW); digitalWrite(programStartLED, HIGH);
+    delay(500);
+    digitalWrite(gpsReadyLED, HIGH); digitalWrite(programStartLED, LOW);
+    delay(500);
+  }
 }
