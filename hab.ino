@@ -33,6 +33,8 @@
    MQ135 --> A15
 
    TO DO:
+   - Set time using new library at program start then add time stamp to each log file write
+   - Add GPS & Aux "update" booleans to logging to indicate new data
    - Log DOF and other data to separate log files
    - Change #define variables to ALL CAPS
    - Add check to confirm GPRS is powered on
@@ -54,17 +56,17 @@
    - Change read data functions to bools to monitor for any errors
    - Update "last known coordinates" from GPS data if changed
    - Utilize TinyGPS++ libraries to calculate distance and course from home
-   - Power SMS during sensor initialization and send test SMS
+   - Power SMS during ms5607 initialization and send test SMS
 
    CONSIDERATIONS:
    - Create LED flashes to indicate specific startup failure
-   - Check if break in DOF sensor for other data affects reconstruction
+   - Check if break in DOF ms5607 for other data affects reconstruction
    - Find function to confirm GPRS is connected to network
    - Use GMT for data logging but include convert function for human-friendly output
-   - Update Adafruit 1604 quickly and other sensors more slowly (Add bools to show when update occurs?)
+   - Update Adafruit 1604 quickly and other ms5607s more slowly (Add bools to show when update occurs?)
    -- Determine optimal update rate for each
    - Descent/landing triggering
-   - Power-off gas sensors and power-on GPRS at same time
+   - Power-off gas ms5607s and power-on GPRS at same time
 */
 
 // Libraries
@@ -73,6 +75,7 @@
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_L3GD20_U.h>
 #include <Adafruit_10DOF.h>
+#include <MS5xxx.h>
 #include <SdFat.h>
 #include <SHT1x.h>
 #include <SPI.h>
@@ -81,11 +84,13 @@
 
 // Definitions
 #define gpsHdopThreshold 200  // Change to 150 for live conditions
-#define dofDataInterval 250 // Update interval (ms) for Adafruit 1604 data
-#define auxDataInterval 15000 // Update interval (ms) for data other than that from Adafruit 1604
+#define dofDataInterval 500 // Update interval (ms) for Adafruit 1604 data
+#define auxDataInterval 5000 // Update interval (ms) for data other than that from Adafruit 1604
+#define gpsDataInterval 15000 // Update interval (ms) for GPS data updates
 #define smsPowerDelay 5000  // Delay between power up and sending of commands to GPRS
 
-const bool debugMode = true;
+const bool debugMode = false;
+const bool debugSmsOff = true;
 
 // Digital Pins
 const int chipSelect = SS;
@@ -115,6 +120,7 @@ bool smsReadyReceived = false;
 bool smsFirstFlush = false;
 bool gpsFix = false;
 float gpsLat, gpsLng, gpsAlt, gpsSpeed;
+float gpsLatLast, gpsLngLast, gpsAltLast, gpsSpeedLast;
 uint32_t gpsDate, gpsTime, gpsSats, gpsCourse;
 int32_t gpsHdop;
 float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;  // Can this be a const float??
@@ -123,9 +129,14 @@ float gyroX, gyroY, gyroZ;
 float magX, magY, magZ;
 float dofRoll, dofPitch, dofHeading;
 float dofPressure, dofTemp, dofAlt;
+float ms5607Temp, ms5607Press;
 int gasValues[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 float shtTemp, shtHumidity;
 int lightVal;
+
+int dofLoopCount = 1;
+int auxLoopCount = 1;
+int gpsLoopCount = 1;
 
 // Initializers
 SdFat sd;
@@ -135,11 +146,13 @@ Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
 Adafruit_L3GD20_Unified       gyro  = Adafruit_L3GD20_Unified(20);
 Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
 Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
+MS5xxx ms5607(&Wire);
 SHT1x sht(shtData, shtClock);
 TinyGPSPlus gps;
 
 void initSensors() {
   // Adafruit 1604
+  Serial.print(" - DOF...");
   if (!accel.begin()) {
     Serial.println("No LSM303 detected...Check your wiring!");
     startupFailure();
@@ -156,7 +169,17 @@ void initSensors() {
     Serial.println("No BMP180 detected...Check your wiring!");
     startupFailure();
   }
+  Serial.println("success.");
 
+  Serial.print(" - MS5607...");
+  if (ms5607.connect() > 0) {
+    Serial.println("No MS5607 detected...Check your wiring!");
+    delay(500);
+    setup();  // CHANGE TO STARTUPFAILURE() FUNCTION?
+  }
+  Serial.println("success.");
+
+  Serial.print(" - SHT11...");
   for (int x = 0; x < 3; x++) {
     float initShtTempC = sht.readTemperatureC();
     delay(100);
@@ -165,6 +188,7 @@ void initSensors() {
     float initShtHumidity = sht.readHumidity();
     delay(100);
   }
+  Serial.println("success.");
 
   bool gpsPower = false;
   bool gpsPpsVal;
@@ -284,7 +308,7 @@ void setup() {
   }
   Serial.println("complete.");
 
-  Serial.println("Initializing sensors.");
+  Serial.println("Initializing sensors:");
   initSensors();
   Serial.println("Sensor initialization complete.");
 
@@ -298,19 +322,21 @@ void setup() {
     delay(250);
   }
 
-  Serial1.print("AT+CMGS=\""); Serial1.print(smsTargetNum); Serial1.println("\"");
-  delay(100);
-  Serial1.println("Reply with \"Ready\" to continue.");
-  delay(100);
-  Serial1.println((char)26);
-  delay(100);
-  smsFlush();
+  if (!debugSmsOff) {
+    Serial1.print("AT+CMGS=\""); Serial1.print(smsTargetNum); Serial1.println("\"");
+    delay(100);
+    Serial1.println("Reply with \"Ready\" to continue.");
+    delay(100);
+    Serial1.println((char)26);
+    delay(100);
+    smsFlush();
 
-  Serial.print("Waiting for SMS ready message...");
-  smsConfirmReady();
-  Serial.println("confirmed.");
+    Serial.print("Waiting for SMS ready message...");
+    smsConfirmReady();
+    Serial.println("received.");
+  }
+
   smsPower(false);
-  delay(1000);
 
   for (int x = 0; x < 2; x++) {
     digitalWrite(programStartLED, HIGH);
@@ -332,22 +358,45 @@ void setup() {
 }
 
 void loop() {
-  for (unsigned long startTime = millis(); (millis() - startTime) < auxDataInterval; ) {
-    readAda1604();
-    if (debugMode) {
-      debugDofPrint();
+  for (unsigned long startTimeGPS = millis(); (millis() - startTimeGPS) < gpsDataInterval; ) {
+    for (unsigned long startTimeAux = millis(); (millis() - startTimeAux) < auxDataInterval; ) {
+      readAda1604();
+      if (debugMode) debugDofPrint();
+      delay(dofDataInterval);
+
+      Serial.print("DOF Loop #: "); Serial.println(dofLoopCount);
+      dofLoopCount++;
     }
-    delay(dofDataInterval);
+    delay(100);
+
+    for (unsigned long startTime = millis(); (millis() - startTime) < 1000; ) {
+      if (!readMS5607()) delay(100);
+      else break;
+      //ms5607Temp = 0.0;
+      //ms5607Press = 0.0;
+      //Serial.println("Error reading MS5607.");  // WRITE TO LOG FILE INSTEAD
+    }
+
+    readGas();
+    readSht();
+    readLight();
+
+    Serial.println();
+    Serial.print("Aux Loop #: "); Serial.println(auxLoopCount);
+    Serial.println();
+    auxLoopCount++;
+
+    if (debugMode) debugAuxPrint();
   }
-  Serial.println();
 
   readGps();
-  readGas();
-  readSht();
-  readLight();
 
-  if (!debugMode) logData();
-  else debugDataPrint();
+  Serial.print("GPS Loop #: "); Serial.println(gpsLoopCount);
+  Serial.println();
+  gpsLoopCount++;
+
+  if (debugMode) debugGpsPrint();
+  else logData();
 }
 
 void readAda1604() {
@@ -384,7 +433,7 @@ void readAda1604() {
     float temperature;
     bmp.getTemperature(&temperature);
     dofPressure = bmp_event.pressure;
-    dofTemp = temperature;
+    dofTemp = (float)temperature;
     dofAlt = bmp.pressureToAltitude(seaLevelPressure, dofPressure, dofTemp);
   }
 }
@@ -406,6 +455,27 @@ void readGps() {
   gpsAlt = gps.altitude.meters();
   gpsSpeed = gps.speed.mps();
   gpsCourse = gps.course.deg();
+
+  if (gpsLat != gpsLatLast) gpsLatLast = gpsLat;
+  if (gpsLng != gpsLngLast) gpsLatLast = gpsLat;
+  if (gpsAlt != gpsAltLast) gpsLatLast = gpsLat;
+  if (gpsSpeed != gpsSpeedLast) gpsLatLast = gpsLat;
+}
+
+bool readMS5607() {
+  ms5607.ReadProm();
+  ms5607.Readout();
+
+  ms5607Temp = ms5607.GetTemp() / 100.0;
+  ms5607Press = ms5607.GetPres() / 100.0;
+
+  uint8_t crc4Read = ms5607.Read_CRC4();
+  uint8_t crc4Calc = ms5607.Calc_CRC4();
+  uint8_t crc4Code = ms5607.CRCcodeTest();
+  uint8_t crc4Expected = 0xB;
+
+  if (crc4Read != crc4Calc || crc4Code != crc4Expected) return false;
+  else return true;
 }
 
 void readGas() {
@@ -439,6 +509,8 @@ void logData() {
   logFile.print(gpsAlt); logFile.print(",");
   logFile.print(gpsSpeed); logFile.print(",");
   logFile.print(gpsCourse); logFile.print(",");
+  logFile.print(ms5607Press); logFile.print(",");
+  logFile.print(ms5607Temp); logFile.print(",");
   logFile.print(accelX); logFile.print(",");
   logFile.print(accelY); logFile.print(",");
   logFile.print(accelZ); logFile.print(",");
@@ -460,6 +532,7 @@ void logData() {
   logFile.print(shtTemp); logFile.print(",");
   logFile.print(shtHumidity); logFile.print(",");
   logFile.println(lightVal);
+  logFile.flush();
   logFile.close();
 }
 
@@ -468,6 +541,7 @@ void logOther(String dataString) {
     sd.errorHalt("Opening debug log for write failed.");
   }
   logFile.println(dataString);
+  logFile.flush();
   logFile.close();
 }
 
@@ -478,19 +552,6 @@ void debugDofPrint() {
   Serial.print(dofPressure); Serial.print("hPa, ");
   Serial.print(dofTemp); Serial.print("C, ");
   Serial.print(dofAlt); Serial.println("m");
-}
-
-void debugDataPrint() {
-  Serial.print("GPS: ");
-  Serial.print(gpsDate); Serial.print(",");
-  Serial.print(gpsTime); Serial.print(" ");
-  Serial.print(gpsLat); Serial.print(",");
-  Serial.print(gpsLng); Serial.print(" ");
-  Serial.print("Sats="); Serial.print(gpsSats); Serial.print(" ");
-  Serial.print("HDOP="); Serial.print(gpsHdop); Serial.print(" ");
-  Serial.print(gpsAlt); Serial.print("m ");
-  Serial.print(gpsSpeed); Serial.print("m/s ");
-  Serial.print(gpsCourse); Serial.println("deg");
   Serial.print("DOF Accel: ");
   Serial.print(accelX); Serial.print(",");
   Serial.print(accelY); Serial.print(",");
@@ -503,14 +564,12 @@ void debugDataPrint() {
   Serial.print(magX); Serial.print(",");
   Serial.print(magY); Serial.print(",");
   Serial.println(magZ);
-  Serial.print("DOF AHRS: ");
-  Serial.print(dofRoll); Serial.print(",");
-  Serial.print(dofPitch); Serial.print(",");
-  Serial.println(dofHeading);
-  Serial.print("DOF Baro: ");
-  Serial.print(dofPressure); Serial.print("hPa,");
-  Serial.print(dofTemp); Serial.print("C,");
-  Serial.print(dofAlt); Serial.println("m");
+}
+
+void debugAuxPrint() {
+  Serial.print("MS5607: ");
+  Serial.print(ms5607Press); Serial.print("hPa,");
+  Serial.print(ms5607Temp); Serial.println("C");
   Serial.print("Gas Sensors: ");
   for (int x = 0; x < 8; x++) {
     Serial.print(gasValues[x]); Serial.print(",");
@@ -520,7 +579,19 @@ void debugDataPrint() {
   Serial.print(shtTemp); Serial.print("C,");
   Serial.print(shtHumidity); Serial.println("%RH");
   Serial.print("Light: "); Serial.print(lightVal); Serial.println("%");
-  Serial.println();
+}
+
+void debugGpsPrint() {
+  Serial.print("GPS: ");
+  Serial.print(gpsDate); Serial.print(",");
+  Serial.print(gpsTime); Serial.print(" ");
+  Serial.print(gpsLat); Serial.print(",");
+  Serial.print(gpsLng); Serial.print(" ");
+  Serial.print("Sats="); Serial.print(gpsSats); Serial.print(" ");
+  Serial.print("HDOP="); Serial.print(gpsHdop); Serial.print(" ");
+  Serial.print(gpsAlt); Serial.print("m ");
+  Serial.print(gpsSpeed); Serial.print("m/s ");
+  Serial.print(gpsCourse); Serial.println("deg");
 }
 
 void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
