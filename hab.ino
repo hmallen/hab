@@ -33,6 +33,7 @@
    MQ135 --> A15
 
    TO DO:
+   - Test if SMS stores in buffer when no signal and sends when reconnected
    - Set time using new library at program start then add time stamp to each log file write
    - Add GPS & Aux "update" booleans to logging to indicate new data
    - Log DOF and other data to separate log files
@@ -247,6 +248,7 @@ void smsPower(bool powerState) {
     delay(100);
     Serial1.println("AT+CNMI=2,2,0,0,0");
     delay(100);
+    smsFlush();
   }
 
   // Power off GPRS
@@ -397,6 +399,16 @@ void loop() {
 
   if (debugMode) debugGpsPrint();
   else logData();
+
+  if (Serial1.available()) {
+    String smsMessageRaw = "";
+    while (Serial1.available()) {
+      char c = Serial1.read();
+      smsMessageRaw += c;
+      delay(10);
+    }
+    smsHandler(smsMessageRaw, false, false);
+  }
 }
 
 void readAda1604() {
@@ -613,6 +625,8 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
     smsMessage += c;
   }
 
+  // LOG DATA HERE
+
   if (smsStartup == true) {
     if (smsMessage == "Ready") smsReadyReceived = true;
     else startupFailure();
@@ -642,7 +656,9 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
         Serial.println(smsMessage);
         break;
     }
+    // LOG DATA HERE
   }
+  else Serial.print("smsMessage: "); Serial.println(smsMessage);
 }
 
 void smsFlush() {
