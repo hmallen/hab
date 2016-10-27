@@ -35,7 +35,6 @@
    TO DO:
    - Test if SMS stores in buffer when no signal and sends when reconnected
    - Set time using new library at program start then add time stamp to each log file write
-   - Change #define variables to ALL CAPS
    - Add check to confirm GPRS is powered on
    - Determine SMS functions and create menu
    - Log incoming/outgoing SMS messages to SD card
@@ -46,13 +45,13 @@
    - Cut-down
    - Buzzer
    - Change global variables to functions returning pointer arrays
-   - Set internal time (or use GPS/GPRS)
    - Update "last known coordinates" from GPS data if changed
    - Set home (launch site) GPS coordinates
    -- Utilize TinyGPS++ libraries to calculate distance and course from home
 
    CONSIDERATIONS:
-   - Reduce smsHandler() to 2 arguments, with startup/exec only executed under specific conditions
+   - Possible to use SMS command to reset system or place into "recovery" mode?
+   - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
    - Create LED flashes to indicate specific startup failure
    - Check if break in DOF ms5607 for other data affects reconstruction
    - Find function to confirm GPRS is connected to network
@@ -80,12 +79,12 @@
 #include <Wire.h>
 
 // Definitions
-#define gpsHdopThreshold 200  // Change to 150 for live conditions
-#define dofDataInterval 500 // Update interval (ms) for Adafruit 1604 data
-#define auxDataInterval 5000 // Update interval (ms) for data other than that from Adafruit 1604
-#define gpsDataInterval 15000 // Update interval (ms) for GPS data updates
-#define smsPowerDelay 5000  // Delay between power up and sending of commands to GPRS
-#define serialTimeout 5000  // Time to wait for incoming GPRS serial data before time-out
+#define GPSHDOPTHRESHOLD 200  // Change to 150 for live conditions
+#define DOFDATAINTERVAL 500 // Update interval (ms) for Adafruit 1604 data
+#define AUXDATAINTERVAL 5000 // Update interval (ms) for data other than that from Adafruit 1604
+#define GPSDATAINTERVAL 15000 // Update interval (ms) for GPS data updates
+#define SMSPOWERDELAY 5000  // Delay between power up and sending of commands to GPRS
+#define SERIALTIMEOUT 5000  // Time to wait for incoming GPRS serial data before time-out
 
 const bool debugMode = false;
 const bool debugSmsOff = true;
@@ -121,6 +120,7 @@ bool firstPass = true;
 bool smsReadyReceived = false;
 bool smsFirstFlush = false;
 bool smsMarkFlush = false;
+String smsCommandText = "";
 bool gpsFix = false;
 float gpsLat, gpsLng, gpsAlt, gpsSpeed;
 float gpsLatLast, gpsLngLast, gpsAltLast, gpsSpeedLast;
@@ -183,7 +183,7 @@ void initSensors() {
 
   Serial.print(" - MS5607...");
   if (ms5607.connect() > 0) {
-    Serial.println("No MS5607 detected...Check your wiring!");
+    Serial.println("No MS5607 detected.");
     delay(500);
     setup();  // CHANGE TO STARTUPFAILURE() FUNCTION?
   }
@@ -206,38 +206,36 @@ void initGps() {
   bool gpsPpsVal;
   int gpsPpsPulses;
 
-  while (true) {
-    Serial.print("Checking for GPS power...");
-    while (gpsPower == false) {
-      gpsPpsPulses = 0;
-      for (unsigned long startTime = millis(); (millis() - startTime) < 1000; ) {
-        gpsPpsVal = digitalRead(gpsPpsPin);
-        if (gpsPpsVal == true) {
-          gpsPpsPulses++;
-          //Serial.print("GPS PULSES: "); Serial.println(gpsPpsPulses);
-        }
-        delay(100);
+  Serial.print("Checking for GPS power...");
+  while (gpsPower == false) {
+    gpsPpsPulses = 0;
+    for (unsigned long startTime = millis(); (millis() - startTime) < 1000; ) {
+      gpsPpsVal = digitalRead(gpsPpsPin);
+      if (gpsPpsVal == true) {
+        gpsPpsPulses++;
+        //Serial.print("GPS PULSES: "); Serial.println(gpsPpsPulses);
       }
-      if (gpsPpsPulses < 5) gpsPower = true;
+      delay(100);
     }
-    Serial.println("confirmed.");
-    Serial.print("Waiting for GPS fix...");
-    while (gpsFix == false) {
-      gpsPpsPulses = 0;
-      for (unsigned long startTime = millis(); (millis() - startTime) < 6000; ) {
-        gpsPpsVal = digitalRead(gpsPpsPin);
-        if (gpsPpsVal == true) {
-          gpsPpsPulses++;
-          //Serial.print("GPS PULSES: "); Serial.println(gpsPpsPulses);
-        }
-        delay(100);
-      }
-      if (gpsPpsPulses >= 5) gpsFix = true;
-    }
-    Serial.println("attained.");
-    Serial.println();
-    break;
+    if (gpsPpsPulses < 5) gpsPower = true;
   }
+  Serial.println("confirmed.");
+  Serial.print("Waiting for GPS fix...");
+  while (gpsFix == false) {
+    gpsPpsPulses = 0;
+    for (unsigned long startTime = millis(); (millis() - startTime) < 6000; ) {
+      gpsPpsVal = digitalRead(gpsPpsPin);
+      if (gpsPpsVal == true) {
+        gpsPpsPulses++;
+        //Serial.print("GPS PULSES: "); Serial.println(gpsPpsPulses);
+      }
+      delay(100);
+    }
+    if (gpsPpsPulses >= 5) gpsFix = true;
+  }
+  Serial.println("attained.");
+  Serial.println();
+
   digitalWrite(gpsReadyLED, HIGH);
 }
 
@@ -248,7 +246,7 @@ void smsPower(bool powerState) {
     delay(500);
     digitalWrite(smsPowerPin, LOW);
 
-    delay(smsPowerDelay);
+    delay(SMSPOWERDELAY);
 
     Serial1.println("ATE0");
     delay(100);
@@ -261,6 +259,8 @@ void smsPower(bool powerState) {
     Serial1.println("AT+CNMI=2,2,0,0,0");
     delay(100);
     smsFlush();
+
+    if (firstPass == false) smsMenu();
   }
 
   // Power off GPRS
@@ -346,7 +346,7 @@ void setup() {
 
   Serial.print("Powering GPRS...");
   smsPower(true);
-  delay(smsPowerDelay);
+  delay(SMSPOWERDELAY);
   Serial.println("complete.");
   Serial.println();
 
@@ -404,9 +404,9 @@ void setup() {
 
 void loop() {
   Serial.println("1");
-  for (unsigned long startTimeGPS = millis(); (millis() - startTimeGPS) < gpsDataInterval; ) {
+  for (unsigned long startTimeGPS = millis(); (millis() - startTimeGPS) < GPSDATAINTERVAL; ) {
     Serial.println("2");
-    for (unsigned long startTimeAux = millis(); (millis() - startTimeAux) < auxDataInterval; ) {
+    for (unsigned long startTimeAux = millis(); (millis() - startTimeAux) < AUXDATAINTERVAL; ) {
       Serial.println("3");
       if (!readAda1604()) {
         ada1604Failures++;
@@ -419,7 +419,7 @@ void loop() {
       if (debugMode) debugDofPrint();
       else logData("dof");
       Serial.println("5");
-      delay(dofDataInterval);
+      delay(DOFDATAINTERVAL);
       dofLoopCount++;
     }
     Serial.println("6");
@@ -498,6 +498,8 @@ void loop() {
     Serial.println("complete.");
     Serial.println();
   }
+
+  if (smsCommandText != "") smsSendConfirmation();
 
   if (firstPass == true) firstPass = false;
 }
@@ -787,7 +789,7 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
           delay(100);
         }
         break;
-      // GPS Google Maps link
+      // Location (Google Maps link sent via SMS)
       case 2:
         Serial.print("SMS command #2 issued...");
 
@@ -802,7 +804,7 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
         smsFlush();
         smsMarkFlush = true;
         break;
-      // Unused
+      // Buzzer [NEEDS TO BE INSTALLED]
       case 3:
         Serial.print("SMS command #3 issued...");
         break;
@@ -811,12 +813,43 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
         Serial.print(smsMessage);
         break;
     }
+
+    if (smsCommand == 1) smsCommandText = "LED";
+    else if (smsCommand == 3) smsCommandText = "Buzzer";
+
     // LOG DATA HERE
   }
   else {
     Serial.print("smsMessage: ");
     Serial.println(smsMessage);
   }
+}
+
+void smsMenu() {
+  Serial1.print("AT + CMGS = \""); Serial1.print(smsTargetNum); Serial1.println("\"");
+  delay(100);
+  Serial1.print("SMS Command Menu: ");
+  Serial1.print("1-LED, ");
+  Serial1.print("2-Location, ");
+  Serial1.println("3-Buzzer");
+  delay(100);
+  Serial1.println((char)26);
+  delay(100);
+  smsFlush();
+  smsMarkFlush = true;
+}
+
+void smsSendConfirmation() {
+  Serial1.print("AT + CMGS = \""); Serial1.print(smsTargetNum); Serial1.println("\"");
+  delay(100);
+  Serial1.print(smsCommandText);
+  Serial1.println(" activated.");
+  delay(100);
+  Serial1.println((char)26);
+  delay(100);
+  smsFlush();
+  smsCommandText = "";
+  smsMarkFlush = true;
 }
 
 void smsFlush() {
