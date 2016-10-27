@@ -35,33 +35,24 @@
    TO DO:
    - Test if SMS stores in buffer when no signal and sends when reconnected
    - Set time using new library at program start then add time stamp to each log file write
-   - Add GPS & Aux "update" booleans to logging to indicate new data
-   - Log DOF and other data to separate log files
    - Change #define variables to ALL CAPS
    - Add check to confirm GPRS is powered on
-   - Add SMS send/receive confirmation on program start
-   -- Sends test SMS
-   -- Require response for program start
-   -- Power off GPRS when correct response received
    - Determine SMS functions and create menu
    - Log incoming/outgoing SMS messages to SD card
    - Change digital pin order for uniformity
    - Consider setting sampling rate based on theoretical ascent rate
-   - Integrate GPRS
    - Error logging (add new and change serial prints to log)
    - Heater
    - Cut-down
    - Buzzer
    - Change global variables to functions returning pointer arrays
    - Set internal time (or use GPS/GPRS)
-   - Change read data functions to bools to monitor for any errors
    - Update "last known coordinates" from GPS data if changed
-   - Utilize TinyGPS++ libraries to calculate distance and course from home
-   - Power SMS during ms5607 initialization and send test SMS
+   - Set home (launch site) GPS coordinates
+   -- Utilize TinyGPS++ libraries to calculate distance and course from home
 
    CONSIDERATIONS:
    - Reduce smsHandler() to 2 arguments, with startup/exec only executed under specific conditions
-   - Create bools for each sensor set and disable reads if failing
    - Create LED flashes to indicate specific startup failure
    - Check if break in DOF ms5607 for other data affects reconstruction
    - Find function to confirm GPRS is connected to network
@@ -96,7 +87,7 @@
 #define smsPowerDelay 5000  // Delay between power up and sending of commands to GPRS
 #define serialTimeout 5000  // Time to wait for incoming GPRS serial data before time-out
 
-const bool debugMode = true;
+const bool debugMode = false;
 const bool debugSmsOff = true;
 
 // Digital Pins
@@ -118,11 +109,15 @@ const int lightPin = A0;
 const int gasPins[] = {A7, A8, A9, A10, A11, A12, A13, A14, A15};
 
 // Constants
-const char log_file[] = "hab_log.txt";
-const char debug_file[] = "hab_debug.txt";
+const char dof_log_file[] = "dof_log.txt";
+const char aux_log_file[] = "aux_log.txt";
+const char gps_log_file[] = "gps_log.txt";
+const char other_log_file[] = "other_log.txt";
+const char debug_log_file[] = "debug_log.txt";
 const char smsTargetNum[] = "+12145635266";
 
 // Global variables
+bool firstPass = true;
 bool smsReadyReceived = false;
 bool smsFirstFlush = false;
 bool smsMarkFlush = false;
@@ -158,7 +153,12 @@ MS5xxx ms5607(&Wire);
 SHT1x sht(shtData, shtClock);
 TinyGPSPlus gps;
 
+int ada1604Failures = 0;
+int gpsFailures = 0;
 int ms5607Failures = 0;
+int gasFailures = 0;
+int shtFailures = 0;
+int lightFailures = 0;
 
 void initSensors() {
   // Adafruit 1604
@@ -403,18 +403,26 @@ void setup() {
 }
 
 void loop() {
+  Serial.println("1");
   for (unsigned long startTimeGPS = millis(); (millis() - startTimeGPS) < gpsDataInterval; ) {
+    Serial.println("2");
     for (unsigned long startTimeAux = millis(); (millis() - startTimeAux) < auxDataInterval; ) {
-      readAda1604();
-
+      Serial.println("3");
+      if (!readAda1604()) {
+        ada1604Failures++;
+        Serial.print("Failed to read DOF. Count=");  // WRITE TO LOG FILE INSTEAD
+        Serial.println(ada1604Failures);
+      }
+      Serial.println("4");
       Serial.print("DOF Loop #: "); Serial.println(dofLoopCount);
 
       if (debugMode) debugDofPrint();
+      else logData("dof");
+      Serial.println("5");
       delay(dofDataInterval);
-
       dofLoopCount++;
     }
-
+    Serial.println("6");
     if (!readMS5607()) {
       ms5607Failures++;
       Serial.print("Failed to read MS5607. Count=");  // WRITE TO LOG FILE INSTEAD
@@ -422,27 +430,48 @@ void loop() {
       ms5607Temp = 0.0;
       ms5607Press = 0.0;
     }
-
-    readGas();
-    readSht();
-    readLight();
-
+    Serial.println("7");
+    if (!readGas()) {
+      gasFailures++;
+      Serial.print("Failed to read gas sensors. Count=");  // WRITE TO LOG FILE INSTEAD
+      Serial.println(gasFailures);
+    }
+    Serial.println("8");
+    if (!readSht()) {
+      shtFailures++;
+      Serial.print("Failed to read SHT11. Count=");  // WRITE TO LOG FILE INSTEAD
+      Serial.println(shtFailures);
+    }
+    Serial.println("9");
+    if (!readLight()) {
+      lightFailures++;
+      Serial.print("Failed to read light sensor. Count=");  // WRITE TO LOG FILE INSTEAD
+      Serial.println(lightFailures);
+    }
+    Serial.println("10");
     Serial.println();
     Serial.print("Aux Loop #: "); Serial.println(auxLoopCount);
     auxLoopCount++;
 
     if (debugMode) debugAuxPrint();
+    else logData("aux");
     Serial.println();
   }
-
-  readGps();
-
+  Serial.println("11");
+  if (!readGps()) {
+    gpsFailures++;
+    Serial.print("Failed to read GPS. Count=");  // WRITE TO LOG FILE INSTEAD
+    Serial.println(gpsFailures);
+    gpsLat = gpsLatLast;
+    gpsLng = gpsLngLast;
+  }
+  Serial.println("12");
   Serial.println();
   Serial.print("GPS Loop #: "); Serial.println(gpsLoopCount);
   gpsLoopCount++;
 
   if (debugMode) debugGpsPrint();
-  else logData();
+  else logData("gps");
 
   Serial.println();
   Serial.print("MS5607 Failures: "); Serial.println(ms5607Failures);
@@ -469,9 +498,11 @@ void loop() {
     Serial.println("complete.");
     Serial.println();
   }
+
+  if (firstPass == true) firstPass = false;
 }
 
-void readAda1604() {
+bool readAda1604() {
   sensors_event_t accel_event;
   sensors_event_t mag_event;
   sensors_event_t gyro_event;
@@ -500,6 +531,7 @@ void readAda1604() {
     dofPitch = orientation.pitch;
     dofHeading = orientation.heading;
   }
+  else return false;
 
   if (bmp_event.pressure) {
     float temperature;
@@ -508,9 +540,12 @@ void readAda1604() {
     dofTemp = (float)temperature;
     dofAlt = bmp.pressureToAltitude(seaLevelPressure, dofPressure, dofTemp);
   }
+  else return false;
+
+  return true;
 }
 
-void readGps() {
+bool readGps() {
   unsigned long startTime = millis();
 
   while ((millis() - startTime) < 1000) {
@@ -532,6 +567,9 @@ void readGps() {
   if (gpsLng != gpsLngLast) gpsLatLast = gpsLat;
   if (gpsAlt != gpsAltLast) gpsLatLast = gpsLat;
   if (gpsSpeed != gpsSpeedLast) gpsLatLast = gpsLat;
+
+  if (gps.location.isValid() && gps.location.isUpdated()) return true;
+  else return false;
 }
 
 bool readMS5607() {
@@ -562,68 +600,94 @@ bool readMS5607() {
   else return true;
 }
 
-void readGas() {
+bool readGas() {
   int gasPinLength = sizeof(gasPins) / 2;
+  static int gasValuesLast = gasValues;
+
   for (int x = 0; x < gasPinLength; x++) {
     gasValues[x] = analogRead(gasPins[x]);
     delay(10);
   }
+
+  if (gasValues != gasValuesLast) return true;
+  else return false;
 }
 
-void readSht() {
+bool readSht() {
   shtTemp = sht.readTemperatureC();
   shtHumidity = sht.readHumidity();
+
+  if (-100.0 <= shtTemp <= 100.0 && 0.0 <= shtHumidity <= 100.0) return true;
+  else return false;
 }
 
-void readLight() {
+bool readLight() {
   int lightValRaw = 1023 - analogRead(lightPin);
   lightVal = map(lightValRaw, 0, 1023, 0, 100);
+  if (0 <= lightVal <= 1023) return true;
+  else return false;
 }
 
-void logData() {
-  if (!logFile.open(log_file, O_RDWR | O_CREAT | O_AT_END)) {
-    sd.errorHalt("Opening debug log for write failed.");
+void logData(String logType) {
+  // GET RID OF SD.ERRORHALT() TO PREVENT PROGRAM FROM STALLING
+  if (logType == "dof") {
+    if (!logFile.open(dof_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening debug log for write failed.");
+
+    logFile.print(accelX); logFile.print(",");
+    logFile.print(accelY); logFile.print(",");
+    logFile.print(accelZ); logFile.print(",");
+    logFile.print(gyroX); logFile.print(",");
+    logFile.print(gyroY); logFile.print(",");
+    logFile.print(gyroZ); logFile.print(",");
+    logFile.print(magX); logFile.print(",");
+    logFile.print(magY); logFile.print(",");
+    logFile.print(magZ); logFile.print(",");
+    logFile.print(dofRoll); logFile.print(",");
+    logFile.print(dofPitch); logFile.print(",");
+    logFile.print(dofHeading); logFile.print(",");
+    logFile.print(dofPressure); logFile.print(",");
+    logFile.print(dofTemp); logFile.print(",");
+    logFile.println(dofAlt);
   }
-  logFile.print(gpsDate); logFile.print(",");
-  logFile.print(gpsTime); logFile.print(",");
-  logFile.print(gpsLat); logFile.print(",");
-  logFile.print(gpsLng); logFile.print(",");
-  logFile.print(gpsSats); logFile.print(",");
-  logFile.print(gpsHdop); logFile.print(",");
-  logFile.print(gpsAlt); logFile.print(",");
-  logFile.print(gpsSpeed); logFile.print(",");
-  logFile.print(gpsCourse); logFile.print(",");
-  logFile.print(ms5607Press); logFile.print(",");
-  logFile.print(ms5607Temp); logFile.print(",");
-  logFile.print(accelX); logFile.print(",");
-  logFile.print(accelY); logFile.print(",");
-  logFile.print(accelZ); logFile.print(",");
-  logFile.print(gyroX); logFile.print(",");
-  logFile.print(gyroY); logFile.print(",");
-  logFile.print(gyroZ); logFile.print(",");
-  logFile.print(magX); logFile.print(",");
-  logFile.print(magY); logFile.print(",");
-  logFile.print(magZ); logFile.print(",");
-  logFile.print(dofRoll); logFile.print(",");
-  logFile.print(dofPitch); logFile.print(",");
-  logFile.print(dofHeading); logFile.print(",");
-  logFile.print(dofPressure); logFile.print(",");
-  logFile.print(dofTemp); logFile.print(",");
-  logFile.print(dofAlt); logFile.print(",");
-  for (int x = 0; x < 9; x++) {
-    logFile.print(gasValues[x]); logFile.print(",");
+
+  else if (logType == "aux") {
+    if (!logFile.open(aux_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening aux log for write failed.");
+
+    logFile.print(ms5607Press); logFile.print(",");
+    logFile.print(ms5607Temp); logFile.print(",");
+    for (int x = 0; x < 9; x++) {
+      logFile.print(gasValues[x]); logFile.print(",");
+    }
+    logFile.print(shtTemp); logFile.print(",");
+    logFile.print(shtHumidity); logFile.print(",");
+    logFile.println(lightVal);
   }
-  logFile.print(shtTemp); logFile.print(",");
-  logFile.print(shtHumidity); logFile.print(",");
-  logFile.println(lightVal);
+  else if (logType == "gps") {
+    if (!logFile.open(gps_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening GPS log for write failed.");
+
+    logFile.print(gpsDate); logFile.print(",");
+    logFile.print(gpsTime); logFile.print(",");
+    logFile.print(gpsLat); logFile.print(",");
+    logFile.print(gpsLng); logFile.print(",");
+    logFile.print(gpsSats); logFile.print(",");
+    logFile.print(gpsHdop); logFile.print(",");
+    logFile.print(gpsAlt); logFile.print(",");
+    logFile.print(gpsSpeed); logFile.print(",");
+    logFile.println(gpsCourse);
+  }
+  else if (logType == "debug") {
+    if (!logFile.open(debug_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening debug log for write failed.");
+  }
+  else Serial.println("Unrecognized log type. Failed to write to SD.");
+
   logFile.flush();
   logFile.close();
 }
 
 void logOther(String dataString) {
-  if (!logFile.open(debug_file, O_RDWR | O_CREAT | O_AT_END)) {
-    sd.errorHalt("Opening debug log for write failed.");
-  }
+  // GET RID OF SD.ERRORHALT() TO PREVENT PROGRAM FROM STALLING
+  if (!logFile.open(other_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening debug log for write failed.");
+
   logFile.println(dataString);
   logFile.flush();
   logFile.close();
