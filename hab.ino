@@ -90,7 +90,7 @@
 #define gpsDataInterval 15000 // Update interval (ms) for GPS data updates
 #define smsPowerDelay 5000  // Delay between power up and sending of commands to GPRS
 
-const bool debugMode = false;
+const bool debugMode = true;
 const bool debugSmsOff = true;
 
 // Digital Pins
@@ -256,6 +256,11 @@ void smsPower(bool powerState) {
     digitalWrite(smsPowerPin, HIGH);
     delay(1000);
     digitalWrite(smsPowerPin, LOW);
+
+    while (!Serial1.available()) {
+      delay(10);
+    }
+    smsFlush();
   }
 }
 
@@ -363,17 +368,28 @@ void loop() {
   for (unsigned long startTimeGPS = millis(); (millis() - startTimeGPS) < gpsDataInterval; ) {
     for (unsigned long startTimeAux = millis(); (millis() - startTimeAux) < auxDataInterval; ) {
       readAda1604();
+
+      Serial.print("DOF Loop #: "); Serial.println(dofLoopCount);
+
       if (debugMode) debugDofPrint();
       delay(dofDataInterval);
 
-      Serial.print("DOF Loop #: "); Serial.println(dofLoopCount);
       dofLoopCount++;
     }
     delay(100);
 
     for (unsigned long startTime = millis(); (millis() - startTime) < 1000; ) {
-      if (!readMS5607()) delay(100);
-      else break;
+      if (!readMS5607()) {
+        Serial.println("Waiting for MS5607.");
+        delay(250);
+        while (!readMS5607()) {
+          delay(250);
+        }
+      }
+      else {
+        Serial.println("Read successful.");
+        break;
+      }
       //ms5607Temp = 0.0;
       //ms5607Press = 0.0;
       //Serial.println("Error reading MS5607.");  // WRITE TO LOG FILE INSTEAD
@@ -385,25 +401,27 @@ void loop() {
 
     Serial.println();
     Serial.print("Aux Loop #: "); Serial.println(auxLoopCount);
-    Serial.println();
     auxLoopCount++;
 
     if (debugMode) debugAuxPrint();
+    Serial.println();
   }
 
   readGps();
 
   Serial.print("GPS Loop #: "); Serial.println(gpsLoopCount);
-  Serial.println();
   gpsLoopCount++;
 
   if (debugMode) debugGpsPrint();
   else logData();
+  Serial.println();
 
   if (Serial1.available()) {
+    Serial.println("Incoming GPRS serial data.");
     String smsMessageRaw = "";
     while (Serial1.available()) {
       char c = Serial1.read();
+      Serial.write(c);
       smsMessageRaw += c;
       delay(10);
     }
@@ -475,19 +493,33 @@ void readGps() {
 }
 
 bool readMS5607() {
+  Serial.println("Enter MS5607.");
   ms5607.ReadProm();
   ms5607.Readout();
+  Serial.println("MS5607 ROM data read.");
 
   ms5607Temp = ms5607.GetTemp() / 100.0;
   ms5607Press = ms5607.GetPres() / 100.0;
+  Serial.println("MS5607 temp/press read.");
 
-  uint8_t crc4Read = ms5607.Read_CRC4();
   uint8_t crc4Calc = ms5607.Calc_CRC4();
+  uint8_t crc4Read = ms5607.Read_CRC4();
   uint8_t crc4Code = ms5607.CRCcodeTest();
   uint8_t crc4Expected = 0xB;
+  Serial.print(crc4Calc, HEX); Serial.print("/");
+  Serial.print(crc4Read, HEX); Serial.print(" - ");
+  Serial.print(crc4Code, HEX); Serial.print(" [");
+  Serial.print(crc4Expected, HEX); Serial.println("]");
 
-  if (crc4Read != crc4Calc || crc4Code != crc4Expected) return false;
-  else return true;
+  if (crc4Read != crc4Calc || crc4Code != crc4Expected) {
+    Serial.println("MS5607 CRC4 check failed.");
+    Serial.print(ms5607Temp); Serial.print(","); Serial.println(ms5607Press);
+    return false;
+  }
+  else {
+    Serial.println("MS5607 CRC4 check passed.");
+    return true;
+  }
 }
 
 void readGas() {
@@ -580,7 +612,7 @@ void debugDofPrint() {
 
 void debugAuxPrint() {
   Serial.print("MS5607: ");
-  Serial.print(ms5607Press); Serial.print("hPa,");
+  Serial.print(ms5607Press); Serial.print("hPa, ");
   Serial.print(ms5607Temp); Serial.println("C");
   Serial.print("Gas Sensors: ");
   for (int x = 0; x < 8; x++) {
@@ -588,7 +620,7 @@ void debugAuxPrint() {
   }
   Serial.println(gasValues[8]);
   Serial.print("SHT11: ");
-  Serial.print(shtTemp); Serial.print("C,");
+  Serial.print(shtTemp); Serial.print("C, ");
   Serial.print(shtHumidity); Serial.println("%RH");
   Serial.print("Light: "); Serial.print(lightVal); Serial.println("%");
 }
