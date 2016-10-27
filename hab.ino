@@ -60,6 +60,7 @@
    - Power SMS during ms5607 initialization and send test SMS
 
    CONSIDERATIONS:
+   - Create bools for each sensor set and disable reads if failing
    - Create LED flashes to indicate specific startup failure
    - Check if break in DOF ms5607 for other data affects reconstruction
    - Find function to confirm GPRS is connected to network
@@ -68,6 +69,9 @@
    -- Determine optimal update rate for each
    - Descent/landing triggering
    - Power-off gas ms5607s and power-on GPRS at same time
+
+   LESSONS LEARNED:
+   - I2C device failures (first observed w/ MS5607 CRC4 check fail) likely due to poor jumper/breadboard wiring
 */
 
 // Libraries
@@ -155,19 +159,19 @@ void initSensors() {
   // Adafruit 1604
   Serial.print(" - DOF...");
   if (!accel.begin()) {
-    Serial.println("No LSM303 detected...Check your wiring!");
+    Serial.println("No LSM303 detected.");
     startupFailure();
   }
   if (!mag.begin()) {
-    Serial.println("No LSM303 detected...Check your wiring!");
+    Serial.println("No LSM303 detected.");
     startupFailure();
   }
   if (!gyro.begin()) {
-    Serial.println("No L3GD20 detected...Check your wiring or I2C address!");
+    Serial.println("No L3GD20 detected.");
     startupFailure();
   }
   if (!bmp.begin()) {
-    Serial.println("No BMP180 detected...Check your wiring!");
+    Serial.println("No BMP180 detected.");
     startupFailure();
   }
   Serial.println("success.");
@@ -352,7 +356,7 @@ void setup() {
     delay(250);
   }
 
-  Serial.print("Waiting for program start trigger...");
+  Serial.print("Flip switch to continue...");
   while (true) {
     if (digitalRead(programStartPin) == 1) {
       digitalWrite(programStartLED, HIGH);
@@ -378,22 +382,13 @@ void loop() {
     }
     delay(100);
 
-    for (unsigned long startTime = millis(); (millis() - startTime) < 1000; ) {
-      if (!readMS5607()) {
-        Serial.println("Waiting for MS5607.");
-        delay(250);
-        while (!readMS5607()) {
-          delay(250);
-        }
-      }
-      else {
-        Serial.println("Read successful.");
-        break;
-      }
-      //ms5607Temp = 0.0;
-      //ms5607Press = 0.0;
-      //Serial.println("Error reading MS5607.");  // WRITE TO LOG FILE INSTEAD
+    if (!readMS5607()) {
+      Serial.println("Failed to read MS5607.");  // WRITE TO LOG FILE INSTEAD
+      ms5607Temp = 0.0;
+      ms5607Press = 0.0;
+      break;
     }
+    else break;
 
     readGas();
     readSht();
@@ -493,33 +488,31 @@ void readGps() {
 }
 
 bool readMS5607() {
-  Serial.println("Enter MS5607.");
   ms5607.ReadProm();
   ms5607.Readout();
-  Serial.println("MS5607 ROM data read.");
 
   ms5607Temp = ms5607.GetTemp() / 100.0;
   ms5607Press = ms5607.GetPres() / 100.0;
-  Serial.println("MS5607 temp/press read.");
 
   uint8_t crc4Calc = ms5607.Calc_CRC4();
   uint8_t crc4Read = ms5607.Read_CRC4();
   uint8_t crc4Code = ms5607.CRCcodeTest();
   uint8_t crc4Expected = 0xB;
-  Serial.print(crc4Calc, HEX); Serial.print("/");
-  Serial.print(crc4Read, HEX); Serial.print(" - ");
-  Serial.print(crc4Code, HEX); Serial.print(" [");
-  Serial.print(crc4Expected, HEX); Serial.println("]");
+
+  /*Serial.print(crc4Calc, HEX); Serial.print("/");
+    Serial.print(crc4Read, HEX); Serial.print(" - ");
+    Serial.print(crc4Code, HEX); Serial.print(" [");
+    Serial.print(crc4Expected, HEX); Serial.println("]");*/
 
   if (crc4Read != crc4Calc || crc4Code != crc4Expected) {
     Serial.println("MS5607 CRC4 check failed.");
-    Serial.print(ms5607Temp); Serial.print(","); Serial.println(ms5607Press);
+    Serial.print(crc4Calc, HEX); Serial.print("/");
+    Serial.print(crc4Read, HEX); Serial.print(" - ");
+    Serial.print(crc4Code, HEX); Serial.print(" [");
+    Serial.print(crc4Expected, HEX); Serial.println("]");
     return false;
   }
-  else {
-    Serial.println("MS5607 CRC4 check passed.");
-    return true;
-  }
+  else return true;
 }
 
 void readGas() {
