@@ -1,0 +1,25 @@
+GPS:
+
+[double]	gps.location.lat()
+[double]	gps.location.lng()
+[u32]		gps.date.value()
+[u32]		gps.time.value()
+[double]	gps.speed.mps()
+[double]	gps.course.deg()
+[double]	gps.altitude.meters()
+[u32]		gps.satellites.value()
+[i32]		gps.hdop.value()
+
+if (millis() > 5000 && gps.charsProcessed() < 10) // uh oh
+{
+  Serial.println("ERROR: not getting any GPS data!");
+  // dump the stream to Serial
+  Serial.println("GPS stream dump:");
+  while (true) // infinite loop
+    if (ss.available() > 0) // any data coming in?
+      Serial.write(ss.read());
+}
+
+float gpsLat, gpsLng, gpsAlt, gpsSpeed;
+uint32_t gpsDate, gpsTime, gpsSats, gpsCourse;
+int32_t gpsHdop;
