@@ -33,6 +33,7 @@
    MQ135 --> A15
 
    TO DO:
+   - Map gas sensor values to standard range (ex. 0-1000/10 --> floating point value)
    - Fix improper return of GPS read failure
    - Test if SMS stores in buffer when no signal and sends when reconnected
    - Set time using new library at program start then add time stamp to each log file write
@@ -51,6 +52,7 @@
    -- Utilize TinyGPS++ libraries to calculate distance and course from home
 
    CONSIDERATIONS:
+   - Gas sensor calibration
    - Possible to use SMS command to reset system or place into "recovery" mode?
    - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
    - Create LED flashes to indicate specific startup failure
@@ -87,7 +89,7 @@
 #define SMSPOWERDELAY 5000  // Delay between power up and sending of commands to GPRS
 #define SERIALTIMEOUT 5000  // Time to wait for incoming GPRS serial data before time-out
 
-const bool debugMode = false;
+const bool debugMode = true;
 const bool debugSmsOff = true;
 
 // Digital Pins
@@ -405,26 +407,20 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("1");
   for (unsigned long startTimeGPS = millis(); (millis() - startTimeGPS) < GPSDATAINTERVAL; ) {
-    Serial.println("2");
     for (unsigned long startTimeAux = millis(); (millis() - startTimeAux) < AUXDATAINTERVAL; ) {
-      Serial.println("3");
       if (!readAda1604()) {
         ada1604Failures++;
         Serial.print("Failed to read DOF. Count=");  // WRITE TO LOG FILE INSTEAD
         Serial.println(ada1604Failures);
       }
-      Serial.println("4");
       Serial.print("DOF Loop #: "); Serial.println(dofLoopCount);
 
       if (debugMode) debugDofPrint();
       else logData("dof");
-      Serial.println("5");
       delay(DOFDATAINTERVAL);
       dofLoopCount++;
     }
-    Serial.println("6");
     if (!readMS5607()) {
       ms5607Failures++;
       Serial.print("Failed to read MS5607. Count=");  // WRITE TO LOG FILE INSTEAD
@@ -440,25 +436,21 @@ void loop() {
         delay(100);
       }
     }
-    Serial.println("7");
     if (!readGas()) {
       gasFailures++;
       Serial.print("Failed to read gas sensors. Count=");  // WRITE TO LOG FILE INSTEAD
       Serial.println(gasFailures);
     }
-    Serial.println("8");
     if (!readSht()) {
       shtFailures++;
       Serial.print("Failed to read SHT11. Count=");  // WRITE TO LOG FILE INSTEAD
       Serial.println(shtFailures);
     }
-    Serial.println("9");
     if (!readLight()) {
       lightFailures++;
       Serial.print("Failed to read light sensor. Count=");  // WRITE TO LOG FILE INSTEAD
       Serial.println(lightFailures);
     }
-    Serial.println("10");
     Serial.println();
     Serial.print("Aux Loop #: "); Serial.println(auxLoopCount);
     auxLoopCount++;
@@ -467,7 +459,6 @@ void loop() {
     else logData("aux");
     Serial.println();
   }
-  Serial.println("11");
   if (!readGps()) {
     gpsFailures++;
     Serial.print("Failed to read GPS. Count=");  // WRITE TO LOG FILE INSTEAD
@@ -475,16 +466,12 @@ void loop() {
     gpsLat = gpsLatLast;
     gpsLng = gpsLngLast;
   }
-  Serial.println("12");
   Serial.println();
   Serial.print("GPS Loop #: "); Serial.println(gpsLoopCount);
   gpsLoopCount++;
 
   if (debugMode) debugGpsPrint();
   else logData("gps");
-
-  Serial.println();
-  Serial.print("MS5607 Failures: "); Serial.println(ms5607Failures);
   Serial.println();
 
   if (smsMarkFlush == true) {
@@ -565,22 +552,25 @@ bool readGps() {
       gps.encode(Serial2.read());
     }
   }
-  gpsDate = gps.date.value();
-  gpsTime = gps.time.value();
-  gpsSats = gps.satellites.value();
-  gpsHdop = gps.hdop.value();
-  gpsLat = gps.location.lat();
-  gpsLng = gps.location.lng();
-  gpsAlt = gps.altitude.meters();
-  gpsSpeed = gps.speed.mps();
-  gpsCourse = gps.course.deg();
 
-  if (gpsLat != gpsLatLast) gpsLatLast = gpsLat;
-  if (gpsLng != gpsLngLast) gpsLatLast = gpsLat;
-  if (gpsAlt != gpsAltLast) gpsLatLast = gpsLat;
-  if (gpsSpeed != gpsSpeedLast) gpsLatLast = gpsLat;
+  if (gps.location.isUpdated()) {
+    gpsDate = gps.date.value();
+    gpsTime = gps.time.value();
+    gpsSats = gps.satellites.value();
+    gpsHdop = gps.hdop.value();
+    gpsLat = gps.location.lat();
+    gpsLng = gps.location.lng();
+    gpsAlt = gps.altitude.meters();
+    gpsSpeed = gps.speed.mps();
+    gpsCourse = gps.course.deg();
 
-  if (gps.location.isValid() && gps.location.isUpdated()) return true;
+    if (gpsLat != gpsLatLast) gpsLatLast = gpsLat;
+    if (gpsLng != gpsLngLast) gpsLatLast = gpsLat;
+    if (gpsAlt != gpsAltLast) gpsLatLast = gpsLat;
+    if (gpsSpeed != gpsSpeedLast) gpsLatLast = gpsLat;
+
+    return true;
+  }
   else return false;
 }
 
