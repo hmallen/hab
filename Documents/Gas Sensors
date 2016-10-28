@@ -1,14 +1,14 @@
 # Gas Sensors
 
-MQ-2: Methane, Butane, LPG, Smoke
+*MQ-2: Methane, Butane, LPG, Smoke
 MQ-3: Alcohol, Ethanol, Smoke
-MQ-4: Methane, CNG
+*MQ-4: Methane, CNG
 MQ-5: Natural Gas, LPG
 MQ-6: LPG, Butane
-MQ-7: Carbon Monoxide
-MQ-8: Hydrogen
-MQ-9: Carbon Monoxide, Flammable Gasses
-MQ135: Benzene, Alcohol, Smoke
+*MQ-7: Carbon Monoxide
+*MQ-8: Hydrogen
+*MQ-9: Carbon Monoxide, Flammable Gasses
+*MQ135: Benzene, Alcohol, Smoke
 
 Burn-in time > 48 hours
 

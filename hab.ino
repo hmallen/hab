@@ -136,8 +136,8 @@ float magX, magY, magZ;
 float dofRoll, dofPitch, dofHeading;
 float dofPressure, dofTemp, dofAlt;
 float ms5607Temp, ms5607Press;
-int gasValues[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-int gasValuesLast[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+float gasValues[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+float gasValuesLast[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float shtTemp, shtHumidity;
 int lightVal;
 
@@ -592,7 +592,7 @@ bool readGas() {
   }
 
   for (int x = 0; x < gasPinLength; x++) {
-    gasValues[x] = analogRead(gasPins[x]);
+    gasValues[x] = (float)map((1023 - analogRead(gasPins[x])), 0, 1023, 0, 1000) / 100.0;
     delay(10);
   }
 
