@@ -33,6 +33,7 @@
    MQ135 --> A15
 
    TO DO:
+   - Fix improper return of GPS read failure
    - Test if SMS stores in buffer when no signal and sends when reconnected
    - Set time using new library at program start then add time stamp to each log file write
    - Add check to confirm GPRS is powered on
@@ -134,6 +135,7 @@ float dofRoll, dofPitch, dofHeading;
 float dofPressure, dofTemp, dofAlt;
 float ms5607Temp, ms5607Press;
 int gasValues[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+int gasValuesLast[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 float shtTemp, shtHumidity;
 int lightVal;
 
@@ -427,8 +429,16 @@ void loop() {
       ms5607Failures++;
       Serial.print("Failed to read MS5607. Count=");  // WRITE TO LOG FILE INSTEAD
       Serial.println(ms5607Failures);
-      ms5607Temp = 0.0;
-      ms5607Press = 0.0;
+      for (int x = 0; x < 5; x++) {
+        if (readMS5607()) break;
+        else {
+          Serial.print("Failed to read MS5607. Count=");  // WRITE TO LOG FILE INSTEAD
+          Serial.println(ms5607Failures);
+          ms5607Temp = 0.0;
+          ms5607Press = 0.0;
+        }
+        delay(100);
+      }
     }
     Serial.println("7");
     if (!readGas()) {
@@ -581,30 +591,38 @@ bool readMS5607() {
   ms5607Temp = ms5607.GetTemp() / 100.0;
   ms5607Press = ms5607.GetPres() / 100.0;
 
-  uint8_t crc4Calc = ms5607.Calc_CRC4();
-  uint8_t crc4Read = ms5607.Read_CRC4();
-  uint8_t crc4Code = ms5607.CRCcodeTest();
-  uint8_t crc4Expected = 0xB;
+  /*uint8_t crc4Calc = ms5607.Calc_CRC4();
+    Serial.println("F");
+    uint8_t crc4Read = ms5607.Read_CRC4();
+    Serial.println("G");
+    uint8_t crc4Code = ms5607.CRCcodeTest();
+    Serial.println("H");
+    uint8_t crc4Expected = 0xB;
 
-  /*Serial.print(crc4Calc, HEX); Serial.print("/");
+    Serial.print(crc4Calc, HEX); Serial.print("/");
     Serial.print(crc4Read, HEX); Serial.print(" - ");
     Serial.print(crc4Code, HEX); Serial.print(" [");
-    Serial.print(crc4Expected, HEX); Serial.println("]");*/
+    Serial.print(crc4Expected, HEX); Serial.println("]");
 
-  if (crc4Read != crc4Calc || crc4Code != crc4Expected) {
+    if (crc4Read != crc4Calc || crc4Code != crc4Expected) {
     Serial.println("MS5607 CRC4 check failed.");
+    Serial.print(ms5607Temp); Serial.print(", "); Serial.println(ms5607Press);
     Serial.print(crc4Calc, HEX); Serial.print("/");
     Serial.print(crc4Read, HEX); Serial.print(" - ");
     Serial.print(crc4Code, HEX); Serial.print(" [");
     Serial.print(crc4Expected, HEX); Serial.println("]");
     return false;
-  }
-  else return true;
+    }*/
+
+  if ((-100.0 <= ms5607Temp <= 100.0) && (0.0 <= ms5607Press <= 1100.0)) return true;
+  else return false;
 }
 
 bool readGas() {
   int gasPinLength = sizeof(gasPins) / 2;
-  static int gasValuesLast = gasValues;
+  for (int x = 0; x < gasPinLength; x++) {
+    gasValuesLast[x] = gasValues[x];
+  }
 
   for (int x = 0; x < gasPinLength; x++) {
     gasValues[x] = analogRead(gasPins[x]);
