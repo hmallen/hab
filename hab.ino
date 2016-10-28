@@ -591,29 +591,6 @@ bool readMS5607() {
   ms5607Temp = ms5607.GetTemp() / 100.0;
   ms5607Press = ms5607.GetPres() / 100.0;
 
-  /*uint8_t crc4Calc = ms5607.Calc_CRC4();
-    Serial.println("F");
-    uint8_t crc4Read = ms5607.Read_CRC4();
-    Serial.println("G");
-    uint8_t crc4Code = ms5607.CRCcodeTest();
-    Serial.println("H");
-    uint8_t crc4Expected = 0xB;
-
-    Serial.print(crc4Calc, HEX); Serial.print("/");
-    Serial.print(crc4Read, HEX); Serial.print(" - ");
-    Serial.print(crc4Code, HEX); Serial.print(" [");
-    Serial.print(crc4Expected, HEX); Serial.println("]");
-
-    if (crc4Read != crc4Calc || crc4Code != crc4Expected) {
-    Serial.println("MS5607 CRC4 check failed.");
-    Serial.print(ms5607Temp); Serial.print(", "); Serial.println(ms5607Press);
-    Serial.print(crc4Calc, HEX); Serial.print("/");
-    Serial.print(crc4Read, HEX); Serial.print(" - ");
-    Serial.print(crc4Code, HEX); Serial.print(" [");
-    Serial.print(crc4Expected, HEX); Serial.println("]");
-    return false;
-    }*/
-
   if ((-100.0 <= ms5607Temp <= 100.0) && (0.0 <= ms5607Press <= 1100.0)) return true;
   else return false;
 }
