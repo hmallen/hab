@@ -105,6 +105,8 @@ const int gpsPpsPin = 26;
 const int gpsReadyLED = 23;
 const int programStartPin = 24;
 const int programStartLED = 25;
+const int programReadyPin = 27;
+const int heartbeatOutputPin = 28;
 
 // Analog Pins
 const int lightPin = A0;
@@ -139,7 +141,7 @@ float ms5607Temp, ms5607Press;
 float gasValues[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float gasValuesLast[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float shtTemp, shtHumidity;
-int lightVal;
+float lightVal;
 
 int dofLoopCount = 1;
 int auxLoopCount = 1;
@@ -323,6 +325,8 @@ void setup() {
   pinMode(smsPowerPin, OUTPUT); digitalWrite(smsPowerPin, LOW);
   pinMode(gpsReadyLED, OUTPUT); digitalWrite(gpsReadyLED, LOW);
   pinMode(programStartLED, OUTPUT); digitalWrite(programStartLED, LOW);
+  pinMode(programReadyPin, OUTPUT); digitalWrite(programReadyPin, LOW);
+  pinMode(heartbeatOutputPin, OUTPUT); digitalWrite(heartbeatOutputPin, LOW);
   pinMode(gpsPpsPin, INPUT_PULLUP);
   pinMode(programStartPin, INPUT_PULLUP);
 
@@ -404,6 +408,8 @@ void setup() {
   Serial.println(F("---- PROGRAM ----"));
   Serial.println(F("-----------------"));
   Serial.println();
+
+  digitalWrite(programReadyPin, HIGH);
 }
 
 void loop() {
@@ -458,6 +464,8 @@ void loop() {
     if (debugMode) debugAuxPrint();
     else logData("aux");
     Serial.println();
+
+    heartbeat();
   }
   if (!readGps()) {
     gpsFailures++;
@@ -466,7 +474,6 @@ void loop() {
     gpsLat = gpsLatLast;
     gpsLng = gpsLngLast;
   }
-  Serial.println();
   Serial.print("GPS Loop #: "); Serial.println(gpsLoopCount);
   gpsLoopCount++;
 
@@ -499,6 +506,8 @@ void loop() {
   if (smsCommandText != "") smsSendConfirmation();
 
   if (firstPass == true) firstPass = false;
+
+  heartbeat();
 }
 
 bool readAda1604() {
@@ -592,7 +601,7 @@ bool readGas() {
   }
 
   for (int x = 0; x < gasPinLength; x++) {
-    gasValues[x] = (float)map((1023 - analogRead(gasPins[x])), 0, 1023, 0, 1000) / 100.0;
+    gasValues[x] = (float)map(analogRead(gasPins[x]), 0, 1023, 0, 1000) / 10.0;
     delay(10);
   }
 
@@ -609,9 +618,8 @@ bool readSht() {
 }
 
 bool readLight() {
-  int lightValRaw = 1023 - analogRead(lightPin);
-  lightVal = map(lightValRaw, 0, 1023, 0, 100);
-  if (0 <= lightVal <= 1023) return true;
+  lightVal = (float)map((1023 - analogRead(lightPin)), 0, 1023, 0, 1000) / 10.0;
+  if (0.0 <= lightVal <= 100.0) return true;
   else return false;
 }
 
@@ -853,4 +861,10 @@ void startupFailure() {
     digitalWrite(gpsReadyLED, HIGH); digitalWrite(programStartLED, LOW);
     delay(500);
   }
+}
+
+void heartbeat() {
+  digitalWrite(heartbeatOutputPin, HIGH);
+  delay(100);
+  digitalWrite(heartbeatOutputPin, LOW);
 }
