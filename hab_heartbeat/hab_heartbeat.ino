@@ -10,15 +10,16 @@
   - Count quick, repetitive pulses to read state of Arduino Mega
 */
 
-#define READYPINHOLDTIME 10000 // Time (ms) that program ready pin must remain HIGH to proceed
+#define READYPINHOLDTIME 5000 // Time (ms) that program ready pin must remain HIGH to proceed
 
 const int programReadyPin = 2;
 const int heartbeatInputPin = 3;
 const int resetPin = 4;
+const int heartbeatLED = 13;
 
 void setup() {
   pinMode(resetPin, OUTPUT); digitalWrite(resetPin, HIGH);
-  pinMode(LED_BUILTIN, OUTPUT); digitalWrite(LED_BUILTIN, LOW);
+  pinMode(heartbeatLED, OUTPUT); digitalWrite(heartbeatLED, LOW);
   pinMode(programReadyPin, INPUT_PULLUP);
   pinMode(heartbeatInputPin, INPUT_PULLUP);
 
@@ -33,18 +34,25 @@ void loop() {
   unsigned long startTime = millis();
 
   while ((millis() - startTime) < 10000) {
+    if (digitalRead(programReadyPin) == LOW) {
+      digitalWrite(heartbeatLED, LOW);
+      while (digitalRead(programReadyPin) == LOW) {
+        delay(10);
+      }
+      digitalWrite(heartbeatLED, HIGH);
+      startTime = millis();
+    }
     if (digitalRead(heartbeatInputPin) == HIGH) {
       startTime = millis();
       for (int x = 0; x < 2; x++) {
-        digitalWrite(LED_BUILTIN, LOW);
+        digitalWrite(heartbeatLED, LOW);
         delay(100);
-        digitalWrite(LED_BUILTIN, HIGH);
+        digitalWrite(heartbeatLED, HIGH);
         delay(100);
       }
     }
     delay(10);
   }
-  digitalWrite(LED_BUILTIN, LOW);
 
   triggerReset(false);
 }
@@ -64,8 +72,7 @@ void triggerReset(bool waitOnly) {
   unsigned long startTime = millis();
   while ((millis() - startTime) < READYPINHOLDTIME) {
     if (digitalRead(programReadyPin) == LOW) startTime = millis();
-    delay(10);
   }
   Serial.println("received.");
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(heartbeatLED, HIGH);
 }
