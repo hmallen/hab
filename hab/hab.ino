@@ -38,6 +38,7 @@
    2 --> Landing phase
 
    TO DO:
+   - Check if heater status boolean working properly
    - Set gas sensor relay state based on EEPROM
    - Confirm that boolean argument in smsPower function actually necessary
    - Add EEPROM writes for descent/landing phases
@@ -62,6 +63,7 @@
    -- Utilize TinyGPS++ libraries to calculate distance and course from home
 
    CONSIDERATIONS:
+   - Rename relay pins to better indicate function
    - Gas sensor calibration
    - Possible to use SMS command to reset system or place into "recovery" mode?
    - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
@@ -102,8 +104,9 @@
 #define SMSPOWERDELAY 5000  // Delay between power up and sending of commands to GPRS
 #define SERIALTIMEOUT 5000  // Time to wait for incoming GPRS serial data before time-out
 #define BAROALTCHANGETHRESHOLD 5.0  // Negative altitude change (m) from altimeters to signify real altitude decrease
-#define BAROPRESSCHANGETHRESHOLD 10.0 // Negative pressure change (hPa) from altimeters to signify real altitude decrease
+#define BAROPRESSCHANGETHRESHOLD 0.5 // Negative pressure change (hPa) from altimeters to signify real altitude decrease
 #define GPSCHANGETHRESHOLD 5.0 // Negative altitude change (m) from GPS to signify real altitude decrease
+#define HEATERTRIGGERTEMP 0.0  // Temperature (C) below which internal payload heater activated
 
 //#define DAYLIGHTSAVINGS
 
@@ -121,7 +124,7 @@ const int chipSelect = SS;
 const int shtData = 2;
 const int shtClock = 3;
 const int relayPin1 = 7;  // Gas sensors
-const int relayPin2 = 6;
+const int relayPin2 = 6;  // Internal payload heater
 const int relayPin3 = 5;
 const int relayPin4 = 4;
 const int smsPowerPin = 22;
@@ -131,6 +134,7 @@ const int programStartPin = 24;
 const int programStartLED = 25;
 const int programReadyPin = 27;
 const int heartbeatOutputPin = 28;
+const int buzzerPin = 29;
 
 // Analog Pins
 const int lightPin = A0;
@@ -202,8 +206,6 @@ int ms5607Failures = 0;
 int gasFailures = 0;
 int shtFailures = 0;
 int lightFailures = 0;
-
-float msChangedVal;
 
 void initSensors() {
   // Adafruit 1604
@@ -304,8 +306,6 @@ void smsPower(bool powerState) {
     Serial1.println("AT+CNMI=2,2,0,0,0");
     delay(100);
     smsFlush();
-
-    if (firstPass == false) smsMenu();
   }
 
   // Power off GPRS
@@ -357,8 +357,8 @@ void smsConfirmReady() {
 
 void setup() {
   pinMode(chipSelect, OUTPUT);
-  pinMode(relayPin1, OUTPUT); digitalWrite(relayPin1, HIGH);
-  pinMode(relayPin2, OUTPUT); digitalWrite(relayPin2, LOW);
+  pinMode(relayPin1, OUTPUT); digitalWrite(relayPin1, HIGH);  // Gas sensors
+  pinMode(relayPin2, OUTPUT); digitalWrite(relayPin2, LOW); // Payload heater
   pinMode(relayPin3, OUTPUT); digitalWrite(relayPin3, LOW);
   pinMode(relayPin4, OUTPUT); digitalWrite(relayPin4, LOW);
   pinMode(smsPowerPin, OUTPUT); digitalWrite(smsPowerPin, LOW);
@@ -366,6 +366,7 @@ void setup() {
   pinMode(programStartLED, OUTPUT); digitalWrite(programStartLED, LOW);
   pinMode(programReadyPin, OUTPUT); digitalWrite(programReadyPin, LOW);
   pinMode(heartbeatOutputPin, OUTPUT); digitalWrite(heartbeatOutputPin, LOW);
+  pinMode(buzzerPin, OUTPUT); digitalWrite(buzzerPin, LOW);
   pinMode(gpsPpsPin, INPUT_PULLUP);
   pinMode(programStartPin, INPUT_PULLUP);
 
@@ -374,8 +375,10 @@ void setup() {
   Serial2.begin(9600);  // GPS communication
 
   setupComplete = EEPROM.read(0);
-  descentPhase = EEPROM.read(1);
-  if (descentPhase) landingPhase = EEPROM.read(2);
+  if (setupComplete) {
+    descentPhase = EEPROM.read(1);
+    if (descentPhase) landingPhase = EEPROM.read(2);
+  }
 
   if (!setupComplete) {
     unsigned int startTime = millis();  // Begin gas sensor warmup timer
@@ -396,9 +399,9 @@ void setup() {
 
     for (int x = 0; x < 2; x++) {
       digitalWrite(programStartLED, HIGH);
-      delay(250);
+      delay(100);
       digitalWrite(programStartLED, LOW);
-      delay(250);
+      delay(100);
     }
 
     if (!debugSmsOff) {
@@ -425,9 +428,9 @@ void setup() {
 
     for (int x = 0; x < 2; x++) {
       digitalWrite(programStartLED, HIGH);
-      delay(250);
+      delay(100);
       digitalWrite(programStartLED, LOW);
-      delay(250);
+      delay(100);
     }
 
     Serial.print("Warming-up gas sensors...");
@@ -460,7 +463,7 @@ void setup() {
 
   if (digitalRead(programStartPin) == 0) {
     Serial.print("Clearing EEPROM...");
-    for (int x = 0; x < 5; x++) {
+    for (int x = 0; x < 3; x++) {
       EEPROM.write(x, 0);
     }
     Serial.println("complete.");
@@ -488,37 +491,52 @@ void setup() {
 
 void loop() {
   unsigned long loopStart = millis();
-  for (unsigned long startTimeGps = millis(); (millis() - startTimeGps) < GPSDATAINTERVAL; ) {
-    for (unsigned long startTimeAux = millis(); (millis() - startTimeAux) < AUXDATAINTERVAL; ) {
+  //for (unsigned long startTimeGps = millis(); (millis() - startTimeGps) < GPSDATAINTERVAL; ) {
+  //for (unsigned long startTimeAux = millis(); (millis() - startTimeAux) < AUXDATAINTERVAL; ) {
+  for (int x = 0; x < 3; x++) {
+    for (int y = 0; y < 10; y++) {
       unsigned long startTimeDof = millis();
       dofValid = readAda1604();
       if (!dofValid) {
         ada1604Failures++;
-        Serial.print("Failed to read DOF. Count=");  // WRITE TO LOG FILE INSTEAD
-        Serial.println(ada1604Failures);
+        if (debugMode) {
+          Serial.print("Failed to read DOF. Count=");  // WRITE TO LOG FILE INSTEAD
+          Serial.println(ada1604Failures);
+        }
+        else {
+
+        }
       }
       Serial.print("DOF Loop #: "); Serial.println(dofLoopCount);
 
       if (debugMode) debugDofPrint();
       else logData("dof");
-      delay((DOFDATAINTERVAL - 150));
+      delay(DOFDATAINTERVAL);
       dofLoopCount++;
 
-      Serial.print("Time(DOF): "); Serial.println((millis() - startTimeDof));
+      if (debugMode) Serial.print("Time(DOF): "); Serial.println((millis() - startTimeDof));
       heartbeat();
     }
+    Serial.println();
     Serial.print("Time(Aux-START): "); Serial.println((millis() - loopStart));
 
     ms5607Valid = readMS5607();
     if (!ms5607Valid) {
       ms5607Failures++;
-      Serial.print("Failed to read MS5607. Count=");  // WRITE TO LOG FILE INSTEAD
-      Serial.println(ms5607Failures);
+      if (debugMode) {
+        Serial.print("Failed to read MS5607. Count=");  // WRITE TO LOG FILE INSTEAD
+        Serial.println(ms5607Failures);
+      }
+      else logDebug("Failed to read MS5607. Count=" + String(ms5607Failures));
       for (int x = 0; x < 5; x++) {
         if (readMS5607()) break;
         else {
-          Serial.print("Failed to read MS5607. Count=");  // WRITE TO LOG FILE INSTEAD
-          Serial.println(ms5607Failures);
+          ms5607Failures++;
+          if (debugMode) {
+            Serial.print("Failed to read MS5607. Count=");  // WRITE TO LOG FILE INSTEAD
+            Serial.println(ms5607Failures);
+          }
+          else logDebug("Failed to read MS5607. Count=" + String(ms5607Failures));
           ms5607Temp = 0.0;
           ms5607Press = 0.0;
         }
@@ -529,31 +547,40 @@ void loop() {
     gasValid = readGas();
     if (!gasValid) {
       gasFailures++;
-      Serial.print("Failed to read gas sensors. Count=");  // WRITE TO LOG FILE INSTEAD
-      Serial.println(gasFailures);
+      if (debugMode) {
+        Serial.print("Failed to read gas sensors. Count=");  // WRITE TO LOG FILE INSTEAD
+        Serial.println(gasFailures);
+      }
+      else logDebug("Failed to read gas sensors. Count=" + String(gasFailures));
     }
 
     shtValid = readSht();
     if (!readSht()) {
       shtFailures++;
-      Serial.print("Failed to read SHT11. Count=");  // WRITE TO LOG FILE INSTEAD
-      Serial.println(shtFailures);
+      if (debugMode) {
+        Serial.print("Failed to read SHT11. Count=");  // WRITE TO LOG FILE INSTEAD
+        Serial.println(shtFailures);
+      }
+      else logDebug("Failed to read SHT11. Count=" + String(shtFailures));
     }
 
     lightValid = readLight();
     if (!readLight()) {
       lightFailures++;
-      Serial.print("Failed to read light sensor. Count=");  // WRITE TO LOG FILE INSTEAD
-      Serial.println(lightFailures);
+      if (debugMode) {
+        Serial.print("Failed to read light sensor. Count=");  // WRITE TO LOG FILE INSTEAD
+        Serial.println(lightFailures);
+      }
+      else logDebug("Failed to read light sensor. Count=" + String(lightFailures));
     }
 
-    Serial.println();
+    //Serial.println();
     Serial.print("Aux Loop #: "); Serial.println(auxLoopCount);
     auxLoopCount++;
 
     if (debugMode) debugAuxPrint();
     else logData("aux");
-    Serial.print("Time(Aux-END): "); Serial.println((millis() - loopStart));
+    if (debugMode) Serial.print("Time(Aux-END): "); Serial.println((millis() - loopStart));
     Serial.println();
 
     heartbeat();
@@ -562,8 +589,11 @@ void loop() {
   gpsValid = readGps();
   if (!readGps()) {
     gpsFailures++;
-    Serial.print("Failed to read GPS. Count=");  // WRITE TO LOG FILE INSTEAD
-    Serial.println(gpsFailures);
+    if (debugMode) {
+      Serial.print("Failed to read GPS. Count=");  // WRITE TO LOG FILE INSTEAD
+      Serial.println(gpsFailures);
+    }
+    else logDebug("Failed to read GPS. Count=" + String(gpsFailures));
     gpsLat = gpsLatLast;
     gpsLng = gpsLngLast;
   }
@@ -572,6 +602,7 @@ void loop() {
 
   if (debugMode) debugGpsPrint();
   else logData("gps");
+  if (debugMode) Serial.print("Time(GPS): "); Serial.println(millis() - loopStart);
   Serial.println();
 
   if (smsMarkFlush == true) {
@@ -598,18 +629,20 @@ void loop() {
 
   if (smsCommandText != "") smsSendConfirmation();
 
-  if (firstPass == true) firstPass = false;
+  if (firstPass == true) {
+    if (!debugSmsOff) smsMenu();
+    firstPass = false;
+  }
   else {
     checkChange();
     if (debugMode) {
       Serial.print("GPS Changes: "); Serial.println(gpsChanges);
       Serial.print("DOF Changes: "); Serial.println(dofChanges);
       Serial.print("MS5607 Changes: "); Serial.println(ms5607Changes);
-      Serial.print(" ("); Serial.print(msChangedVal); Serial.println(")");
       Serial.println();
     }
   }
-  Serial.print("Time(GPS): "); Serial.println(millis() - loopStart);
+
   heartbeat();
 }
 
@@ -759,9 +792,21 @@ bool readLight() {
 }
 
 void checkChange() {
+  static bool heaterStatus = digitalRead(relayPin2);
   float gpsAltChange = gpsAltLast - gpsAlt;
   float dofAltChange = dofAltLast - dofAlt;
   float ms5607PressChange = ms5607Press - ms5607PressLast;
+
+  if (dofTemp <= HEATERTRIGGERTEMP && heaterStatus == false) {
+    digitalWrite(relayPin2, HIGH);
+    heaterStatus = true;
+    logDebug("Heater activated @ " + String(dofTemp));
+  }
+  else if (dofTemp > HEATERTRIGGERTEMP && heaterStatus == true) {
+    digitalWrite(relayPin2, LOW);
+    heaterStatus = false;
+    logDebug("Heater inactivated @ " + String(dofTemp));
+  }
 
   if (!descentPhase) {
     if (gpsAltChange <= 0.0) gpsChanges = 0;
@@ -771,10 +816,7 @@ void checkChange() {
     else if (dofAltChange > BAROALTCHANGETHRESHOLD) dofChanges++;
 
     if (ms5607PressChange <= 0.0) ms5607Changes = 0;
-    else if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) {
-      msChangedVal = ms5607PressChange;
-      ms5607Changes++;
-    }
+    else if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
 
     if (gpsChanges >= 10) descentPhase = true;
     else if (dofChanges >= 10) descentPhase = true;
@@ -836,7 +878,9 @@ void checkChange() {
 void logData(String logType) {
   // GET RID OF SD.ERRORHALT() TO PREVENT PROGRAM FROM STALLING
   if (logType == "dof") {
-    if (!logFile.open(dof_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening debug log for write failed.");
+    if (!logFile.open(dof_log_file, O_RDWR | O_CREAT | O_AT_END)) {
+      if (debugMode) sd.errorHalt("Opening debug log for write failed.");
+    }
 
     logFile.print(month()); logFile.print(day()); logFile.print(year()); logFile.print("-");
     logFile.print(hour()); logFile.print(minute()); logFile.print(second()); logFile.print(",");
@@ -859,7 +903,9 @@ void logData(String logType) {
   }
 
   else if (logType == "aux") {
-    if (!logFile.open(aux_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening aux log for write failed.");
+    if (!logFile.open(aux_log_file, O_RDWR | O_CREAT | O_AT_END)) {
+      if (debugMode) sd.errorHalt("Opening aux log for write failed.");
+    }
 
     logFile.print(month()); logFile.print(day()); logFile.print(year()); logFile.print("-");
     logFile.print(hour()); logFile.print(minute()); logFile.print(second()); logFile.print(",");
@@ -875,7 +921,9 @@ void logData(String logType) {
     logFile.println(lightVal);
   }
   else if (logType == "gps") {
-    if (!logFile.open(gps_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening GPS log for write failed.");
+    if (!logFile.open(gps_log_file, O_RDWR | O_CREAT | O_AT_END)) {
+      if (debugMode) sd.errorHalt("Opening GPS log for write failed.");
+    }
 
     logFile.print(month()); logFile.print(day()); logFile.print(year()); logFile.print("-");
     logFile.print(hour()); logFile.print(minute()); logFile.print(second()); logFile.print(",");
@@ -890,19 +938,25 @@ void logData(String logType) {
     logFile.print(gpsSpeed); logFile.print(",");
     logFile.println(gpsCourse);
   }
-  else if (logType == "debug") {
-    if (!logFile.open(debug_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening debug log for write failed.");
+  else {
+    if (debugMode) Serial.println("Unrecognized log type. Failed to write to SD.");
+    else {
+      logDebug("Unrecognized log type. Failed to write to SD.");
+    }
   }
-  else Serial.println("Unrecognized log type. Failed to write to SD.");
 
   logFile.flush();
   logFile.close();
 }
 
-void logOther(String dataString) {
+void logDebug(String dataString) {
   // GET RID OF SD.ERRORHALT() TO PREVENT PROGRAM FROM STALLING
-  if (!logFile.open(other_log_file, O_RDWR | O_CREAT | O_AT_END)) sd.errorHalt("Opening debug log for write failed.");
+  if (!logFile.open(other_log_file, O_RDWR | O_CREAT | O_AT_END)) {
+    if (debugMode) sd.errorHalt("Opening debug log for write failed.");
+  }
 
+  logFile.print(month()); logFile.print(day()); logFile.print(year()); logFile.print("-");
+  logFile.print(hour()); logFile.print(minute()); logFile.print(second()); logFile.print(",");
   logFile.println(dataString);
   logFile.flush();
   logFile.close();
@@ -1020,6 +1074,11 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
       // Buzzer [NEEDS TO BE INSTALLED]
       case 3:
         Serial.print("SMS command #3 issued...");
+
+        digitalWrite(buzzerPin, HIGH);
+        if (debugMode) delay(1000);
+        else delay(30000);
+        digitalWrite(buzzerPin, LOW);
         break;
       default:
         Serial.print("INVALID COMMAND: ");
@@ -1085,6 +1144,6 @@ void startupFailure() {
 
 void heartbeat() {
   digitalWrite(heartbeatOutputPin, HIGH);
-  delay(5);
+  delay(10);
   digitalWrite(heartbeatOutputPin, LOW);
 }

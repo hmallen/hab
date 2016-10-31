@@ -10,6 +10,8 @@
   - Count quick, repetitive pulses to read state of Arduino Mega
 */
 
+#include <avr/wdt.h>
+
 #define READYPINHOLDTIME 5000 // Time (ms) that program ready pin must remain HIGH to proceed
 
 const int programReadyPin = 2;
@@ -17,13 +19,23 @@ const int heartbeatInputPin = 3;
 const int resetPin = 4;
 const int heartbeatLED = 13;
 
+void watchdogSetup() {
+  cli();
+  wdt_reset();
+  WDTCSR |= (1 << WDCE) | (1 << WDE);
+  WDTCSR = (0 << WDIE) | (1 << WDE) | (1 << WDP3) | (0 << WDP2) | (0 << WDP1) | (1 << WDP0);
+  sei();
+}
+
 void setup() {
+  watchdogSetup();
+
   pinMode(resetPin, OUTPUT); digitalWrite(resetPin, HIGH);
   pinMode(heartbeatLED, OUTPUT); digitalWrite(heartbeatLED, LOW);
   pinMode(programReadyPin, INPUT_PULLUP);
   pinMode(heartbeatInputPin, INPUT_PULLUP);
 
-  Serial.begin(9600);
+  //Serial.begin(9600);
 
   delay(1000);
 
@@ -37,6 +49,7 @@ void loop() {
     if (digitalRead(programReadyPin) == LOW) {
       digitalWrite(heartbeatLED, LOW);
       while (digitalRead(programReadyPin) == LOW) {
+        wdt_reset();
         delay(10);
       }
       digitalWrite(heartbeatLED, HIGH);
@@ -51,28 +64,29 @@ void loop() {
         delay(100);
       }
     }
+    wdt_reset();
     delay(10);
   }
-
   triggerReset(false);
 }
 
 void triggerReset(bool waitOnly) {
   if (!waitOnly) {
-    Serial.println();
-    Serial.print("Initiating reset...");
+    //Serial.println();
+    //Serial.print("Initiating reset...");
     digitalWrite(resetPin, LOW);
     delay(1000);
     digitalWrite(resetPin, HIGH);
     delay(1000);
-    Serial.println("complete.");
+    //Serial.println("complete.");
   }
 
-  Serial.print("Waiting for program start signal...");
+  //Serial.print("Waiting for program start signal...");
   unsigned long startTime = millis();
   while ((millis() - startTime) < READYPINHOLDTIME) {
+    wdt_reset();
     if (digitalRead(programReadyPin) == LOW) startTime = millis();
   }
-  Serial.println("received.");
+  //Serial.println("received.");
   digitalWrite(heartbeatLED, HIGH);
 }
