@@ -53,6 +53,7 @@
    -- Utilize TinyGPS++ libraries to calculate distance and course from home
 
    CONSIDERATIONS:
+   - Averaging ~3x GPS coordinates before setting launch site
    - Check launch coordinates to confirm within threshold distance of theoretical launch site
    - Check if system resets if on external power and serial (computer debugging) is unplugged
    - Rename relay pins to better indicate function
@@ -108,8 +109,8 @@ const int gpsTimeOffset = -4;
 const int gpsTimeOffset = -5;
 #endif
 
-const bool debugMode = true;
-const bool debugSmsOff = true;
+const bool debugMode = false;
+const bool debugSmsOff = false;
 
 // Digital Pins
 const int chipSelect = SS;
@@ -350,8 +351,6 @@ void smsConfirmReady() {
       }
     }
     if (Serial1.available()) {
-      Serial.println("GPRS serial data available.");
-      Serial.println();
       if (smsFirstFlush == false) {
         smsFlush();
         smsFirstFlush = true;
@@ -364,10 +363,6 @@ void smsConfirmReady() {
         }
         smsHandler(smsMessageRaw, false, true);
       }
-    }
-    else {
-      Serial.println("No new SMS messages.");
-      Serial.println();
     }
   }
 }
@@ -414,6 +409,23 @@ void setup() {
     if (debugMode) {
       Serial.println("System rebooted by watchdog timer or manual reset.");
       Serial.println();
+    }
+
+    if (digitalRead(programStartPin) == 0) {
+      Serial.print("Clearing EEPROM...");
+      for (int x = 0; x < 3; x++) {
+        EEPROM.update(x, 0);
+      }
+      for (int x = 10; x < 14; x++) {
+        EEPROM.update(x, 0);
+      }
+      for (int x = 20; x < 24; x++) {
+        EEPROM.update(x, 0);
+      }
+      Serial.println("complete.");
+      Serial.println();
+
+      initGps();
     }
 
     digitalWrite(gpsReadyLED, HIGH);
@@ -488,37 +500,24 @@ void setup() {
   Serial.println();
 
   if (digitalRead(programStartPin) == 0) {
-    Serial.print("Clearing EEPROM...");
-    for (int x = 0; x < 3; x++) {
-      EEPROM.update(x, 0);
+    Serial.print("Toggle start switch to continue...");
+    while (digitalRead(programStartPin) == 0) {
+      digitalWrite(programStartLED, HIGH);
+      delay(500);
+      digitalWrite(programStartLED, LOW);
+      delay(500);
     }
-    for (int x = 10; x < 14; x++) {
-      EEPROM.update(x, 0);
-    }
-    for (int x = 20; x < 24; x++) {
-      EEPROM.update(x, 0);
-    }
-    Serial.println("complete.");
-    Serial.println();
-
-    if (digitalRead(programStartPin) == 0) {
-      Serial.print("Toggle start switch to continue...");
-      while (digitalRead(programStartPin) == 0) {
-        delay(100);
-        if (digitalRead(programStartPin) == 1) delay(100);
-      }
-    }
-
     Serial.println("starting program.");
     Serial.println();
-
-    if (debugMode) {
-      Serial.println(F("-----------------"));
-      Serial.println(F("---- PROGRAM ----"));
-      Serial.println(F("-----------------"));
-      Serial.println();
-    }
   }
+
+  if (debugMode) {
+    Serial.println(F("-----------------"));
+    Serial.println(F("---- PROGRAM ----"));
+    Serial.println(F("-----------------"));
+    Serial.println();
+  }
+
   EEPROM.update(0, 1);
   digitalWrite(programReadyPin, HIGH);
   digitalWrite(programStartLED, HIGH);
