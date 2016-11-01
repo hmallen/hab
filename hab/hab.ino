@@ -707,7 +707,17 @@ void loop() {
   if (smsCommandText != "") smsSendConfirmation();
 
   if (loopCount == 1 && !descentPhase && !landingPhase) {
-    if (!debugSmsOff) smsMenu();
+    if (!debugSmsOff) {
+      if (debugMode) {
+        Serial.println();
+        Serial.print("Sending SMS command menu...");
+      }
+      smsMenu();
+      if (debugMode) {
+        Serial.println("complete.");
+        Serial.println();
+      }
+    }
   }
   else {
     checkChange();
