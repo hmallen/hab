@@ -55,6 +55,7 @@
    -- Utilize TinyGPS++ libraries to calculate distance and course from home
 
    CONSIDERATIONS:
+   - Safer to power GPRS before other things to ensure network connectivity?
    - Check if system resets if on external power and serial (computer debugging) is unplugged
    - Gas sensor calibration
    - Possible to use SMS command to reset system or place into "recovery" mode?
@@ -709,7 +710,6 @@ void loop() {
   if (loopCount == 1 && !descentPhase && !landingPhase) {
     if (!debugSmsOff) {
       if (debugMode) {
-        Serial.println();
         Serial.print("Sending SMS command menu...");
       }
       smsMenu();
