@@ -483,6 +483,7 @@ void setup() {
         Serial.print("Waiting for SMS ready message...");
       }
       smsConfirmReady();
+      Serial.println("received.");
     }
 
     //smsPower(false);
@@ -1129,7 +1130,6 @@ void debugGpsPrint() {
 }
 
 void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
-  Serial.println("W");
   String smsRecNumber = "";
   String smsMessage = "";
 
