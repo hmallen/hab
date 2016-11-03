@@ -107,7 +107,7 @@ const int gpsTimeOffset = -5;
 #endif
 
 const bool debugMode = true;
-const bool debugSmsOff = false;
+const bool debugSmsOff = true;
 
 // Digital Pins
 const int chipSelect = SS;
@@ -118,10 +118,10 @@ const int heaterRelay = 6;  // Internal payload heater
 const int relayPin3 = 5;
 const int relayPin4 = 4;
 const int smsPowerPin = 22;
-const int gpsPpsPin = 26;
-const int gpsReadyLED = 23;
-const int programStartPin = 24;
-const int programStartLED = 25;
+const int gpsPpsPin = 23;
+const int gpsReadyLED = 24;
+const int programStartPin = 25;
+const int programStartLED = 26;
 const int programReadyPin = 27;
 const int heartbeatOutputPin = 28;
 const int buzzerPin = 29;
@@ -434,6 +434,7 @@ void setup() {
       Serial.println("System rebooted by watchdog timer or manual reset.");
       Serial.println();
     }
+    // ELSE LOG THE DATA TO SD CARD????
 
     digitalWrite(gpsReadyLED, HIGH);
   }
