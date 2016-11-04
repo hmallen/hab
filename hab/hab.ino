@@ -12,8 +12,10 @@
    - Gas Sensors
    - Temp/Humidity (SHT11)
    - Light
-   - Accelerometer/Gyroscope/Magnetometer
-   - Barometer (Altitude/Temperature)
+   - Adafruit 1604 (DOF)
+   -- Accelerometer/Gyroscope/Magnetometer
+   -- Barometer (Altitude/Temperature) [BMP180]
+   - MS5607 Barometer/Altimeter
 
    Relay Control:
    #1 --> Pin 7 (Gas sensors)
@@ -38,21 +40,17 @@
    2 --> Landing phase
 
    TO DO:
-   - Fix condition: debugMode == true && debugSmsOff == false fail on startup
+   - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
    - Change "ada..." to "dof" for consistency
    - Add servo/picture taking function
-   - Check if \n or \r can be used independently when sending SMS for cleaner output
-   - Turn-off all serial prints when debugMode set to false
    - Confirm that boolean argument in smsPower function actually necessary
    - Test if SMS stores in buffer when no signal and sends when reconnected
    - Add check to confirm GPRS is powered on (Need to find suitable function)
    -- Also check if similar function to indicate network connectivity
    - Log incoming/outgoing SMS messages to SD card
-   - Change digital pin order for uniformity
    - Consider setting sampling rate based on theoretical ascent rate
    - Cut-down
    - Change global variables to functions returning pointer arrays
-   -- Utilize TinyGPS++ libraries to calculate distance and course from home
 
    CONSIDERATIONS:
    - Safer to power GPRS before other things to ensure network connectivity?
@@ -86,8 +84,9 @@
 #include <Wire.h>
 
 // Definitions
-#define GPSHDOPTHRESHOLD 150  // Change to 150 for live conditions
-#define GASSENSORWARMUP 300000  // Gas sensor warm-up time (ms)
+#define GPSHDOPTHRESHOLD 150  // Change to 120 for live conditions????
+//#define GASSENSORWARMUP 300000  // Gas sensor warm-up time (ms)
+#define GASSENSORWARMUP 30000 // For field stress testing
 #define DOFDATAINTERVAL 500 // Update interval (ms) for Adafruit 1604 data
 #define AUXDATAINTERVAL 5000 // Update interval (ms) for data other than that from Adafruit 1604
 #define GPSDATAINTERVAL 15000 // Update interval (ms) for GPS data updates
@@ -509,7 +508,13 @@ void setup() {
     if (debugMode) Serial.print("Warming-up gas sensors...");
     else {
       while ((millis() - startTime) < GASSENSORWARMUP) {
-        ;
+        for (int x = 0; x < 2; x++) {
+          delay(100);
+          digitalWrite(programStartLED, HIGH);
+          delay(100);
+          digitalWrite(programStartLED, LOW);
+        }
+        delay(1000);
       }
     }
     if (debugMode) {
