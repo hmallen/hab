@@ -42,6 +42,7 @@
    TO DO:
    - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
    - REMOVE SD LED FAILURE INDICATOR BEFORE LIVE LAUNCH
+   - Add exception for sensor initialization if setupComplete is true??
    - Change "ada..." to "dof" for consistency
    - Add servo/picture taking function
    - Confirm that boolean argument in smsPower function actually necessary
@@ -69,6 +70,7 @@
    - I2C device failures (first observed w/ MS5607 CRC4 check fail) likely due to poor jumper/breadboard wiring
    - Debug logging of SMS data currently breaks SMS functions if executed immediately prior
    - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
+   - ??Must allow to pass through first loop before sending SMS command or it will be flushed??
 */
 
 // Libraries
