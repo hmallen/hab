@@ -61,7 +61,7 @@
    - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
    - Create LED flashes to indicate specific startup failure
    - Check if break in DOF logging for other data affects reconstruction
-   -- Create program (?Python?) to extrapolate and fill in gaps
+   -- Create program (?Python?) to extrapolate and fill in gaps ["smoothing function"]
 
    LESSONS LEARNED:
    - I2C device failures (first observed w/ MS5607 CRC4 check fail) likely due to poor jumper/breadboard wiring
