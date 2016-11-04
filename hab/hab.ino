@@ -41,6 +41,7 @@
 
    TO DO:
    - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
+   - REMOVE SD LED FAILURE INDICATOR BEFORE LIVE LAUNCH
    - Change "ada..." to "dof" for consistency
    - Add servo/picture taking function
    - Confirm that boolean argument in smsPower function actually necessary
@@ -53,6 +54,7 @@
    - Change global variables to functions returning pointer arrays
 
    CONSIDERATIONS:
+   - Setting SD to SPI_FULL_SPEED
    - Inclusion of additional startup SMS output (gas sensor warmup, etc.)
    - Safer to power GPRS before other things to ensure network connectivity?
    - Check if system resets if on external power and serial (computer debugging) is unplugged
@@ -120,9 +122,9 @@ const int relayPin3 = 5;
 const int relayPin4 = 4;
 const int smsPowerPin = 22;
 const int gpsPpsPin = 23;
-const int gpsReadyLED = 24; // Multi-color LED anode input
+const int gpsReadyLED = 24; // Multi-color LED round-side input [Green]
 const int programStartPin = 25;
-const int programStartLED = 26; // Multi-color LED cathode input
+const int programStartLED = 26; // Multi-color LED flat-side input [Red]
 const int programReadyPin = 27;
 const int heartbeatOutputPin = 28;
 const int buzzerPin = 29;
@@ -446,10 +448,20 @@ void setup() {
       Serial.println();
     }
     // ELSE LOG THE DATA TO SD CARD????
+
+    if (!sd.begin(chipSelect, SPI_HALF_SPEED)) {
+      //sd.initErrorHalt();
+      //startupFailure();
+      // NOT SURE HOW TO HANDLE THIS MID-FLIGHT
+      for (int x = 0; x < 10; x++) {
+        digitalWrite(programStartLED, HIGH);
+        delay(250);
+        digitalWrite(programStartLED, LOW);
+        delay(250);
+      }
+    }
   }
   else {
-    unsigned int startTime = millis();  // Begin gas sensor warmup timer
-
     initGps();
 
     if (debugMode) Serial.print("Powering GPRS...");
@@ -508,7 +520,7 @@ void setup() {
 
     if (debugMode) Serial.print("Warming-up gas sensors...");
     else {
-      while ((millis() - startTime) < GASSENSORWARMUP) {
+      for (unsigned long startTime = millis(); (millis() - startTime) < GASSENSORWARMUP; ) {
         for (int x = 0; x < 2; x++) {
           delay(100);
           digitalWrite(programStartLED, HIGH);
@@ -533,7 +545,8 @@ void setup() {
     Serial.print("Initializing SD card...");
   }
   if (!sd.begin(chipSelect, SPI_HALF_SPEED)) {
-    sd.initErrorHalt();
+    //sd.initErrorHalt();
+    startupFailure();
   }
   if (debugMode) {
     Serial.println("complete.");
