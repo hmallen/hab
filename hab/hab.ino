@@ -67,6 +67,7 @@
    LESSONS LEARNED:
    - I2C device failures (first observed w/ MS5607 CRC4 check fail) likely due to poor jumper/breadboard wiring
    - Debug logging of SMS data currently breaks SMS functions if executed immediately prior
+   - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
 */
 
 // Libraries
@@ -106,8 +107,8 @@ const int gpsTimeOffset = -4;
 const int gpsTimeOffset = -5;
 #endif
 
-const bool debugMode = true;
-const bool debugSmsOff = true;
+const bool debugMode = false;
+const bool debugSmsOff = false;
 
 // Digital Pins
 const int chipSelect = SS;
@@ -119,9 +120,9 @@ const int relayPin3 = 5;
 const int relayPin4 = 4;
 const int smsPowerPin = 22;
 const int gpsPpsPin = 23;
-const int gpsReadyLED = 24;
+const int gpsReadyLED = 24; // Multi-color LED anode input
 const int programStartPin = 25;
-const int programStartLED = 26;
+const int programStartLED = 26; // Multi-color LED cathode input
 const int programReadyPin = 27;
 const int heartbeatOutputPin = 28;
 const int buzzerPin = 29;
@@ -284,40 +285,45 @@ void initGps() {
 
     Serial.print("Waiting for sufficient HDOP...");
   }
-  readGps();
-  while (gpsHdop >= GPSHDOPTHRESHOLD) {
-    delay(1000);
-    readGps();
-  }
-  if (debugMode) {
-    Serial.println("attained.");
 
-    Serial.print("Waiting for stable launch site coordinates...");
-  }
-  gpsLaunchLat = gpsLat;
-  gpsLaunchLng = gpsLng;
   readGps();
-  if (gpsDistAway >= 5.0) {
-    while (gpsDistAway >= 5.0) {
-      gpsLaunchLat = gpsLat;
-      gpsLaunchLng = gpsLng;
-      readGps();
+
+  if (gpsLat == 0.0 || gpsLng == 0.0) startupFailure();
+  else {
+    while (gpsHdop >= GPSHDOPTHRESHOLD) {
       delay(1000);
+      readGps();
     }
+    if (debugMode) {
+      Serial.println("attained.");
+
+      Serial.print("Waiting for stable launch site coordinates...");
+    }
+    gpsLaunchLat = gpsLat;
+    gpsLaunchLng = gpsLng;
+    readGps();
+    if (gpsDistAway >= 5.0) {
+      while (gpsDistAway >= 5.0) {
+        gpsLaunchLat = gpsLat;
+        gpsLaunchLng = gpsLng;
+        readGps();
+        delay(1000);
+      }
+    }
+    if (debugMode) Serial.println("attained.");
+
+    EEPROM.put(10, gpsLaunchLat);
+    EEPROM.put(20, gpsLaunchLng);
+
+    if (debugMode) {
+      Serial.print("Launch Coordinates: ");
+      Serial.print(gpsLaunchLat); Serial.print(", ");
+      Serial.println(gpsLaunchLng);
+      Serial.println();
+    }
+
+    digitalWrite(gpsReadyLED, HIGH);
   }
-  if (debugMode) Serial.println("attained.");
-
-  EEPROM.put(10, gpsLaunchLat);
-  EEPROM.put(20, gpsLaunchLng);
-
-  if (debugMode) {
-    Serial.print("Launch Coordinates: ");
-    Serial.print(gpsLaunchLat); Serial.print(", ");
-    Serial.println(gpsLaunchLng);
-    Serial.println();
-  }
-
-  digitalWrite(gpsReadyLED, HIGH);
 }
 
 void smsPower(bool powerState) {
@@ -360,7 +366,10 @@ void smsConfirmReady() {
   while (smsReadyReceived == false) {
     if (!Serial1.available()) {
       while (!Serial1.available()) {
-        delay(10);
+        delay(100);
+        digitalWrite(gpsReadyLED, LOW);
+        delay(100);
+        digitalWrite(gpsReadyLED, HIGH);
       }
     }
     if (Serial1.available()) {
@@ -420,6 +429,8 @@ void setup() {
 
   setupComplete = EEPROM.read(0);
   if (setupComplete) {
+    digitalWrite(gpsReadyLED, HIGH);
+
     descentPhase = EEPROM.read(1);
     if (descentPhase) landingPhase = EEPROM.read(2);
 
@@ -435,8 +446,6 @@ void setup() {
       Serial.println();
     }
     // ELSE LOG THE DATA TO SD CARD????
-
-    digitalWrite(gpsReadyLED, HIGH);
   }
   else {
     unsigned int startTime = millis();  // Begin gas sensor warmup timer
@@ -548,7 +557,7 @@ void setup() {
 
   EEPROM.update(0, 1);
   digitalWrite(programReadyPin, HIGH);
-  digitalWrite(programStartLED, HIGH);
+  digitalWrite(programStartLED, HIGH); //digitalWrite(gpsReadyLED, LOW);
 }
 
 void loop() {
