@@ -53,6 +53,7 @@
    - Change global variables to functions returning pointer arrays
 
    CONSIDERATIONS:
+   - Inclusion of additional startup SMS output (gas sensor warmup, etc.)
    - Safer to power GPRS before other things to ensure network connectivity?
    - Check if system resets if on external power and serial (computer debugging) is unplugged
    - Gas sensor calibration
