@@ -42,7 +42,6 @@
    TO DO:
    - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
    - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
-   - REMOVE SD LED FAILURE INDICATOR BEFORE LIVE LAUNCH
    - Add exception for sensor initialization if setupComplete is true??
    - Change "ada..." to "dof" for consistency
    - Add servo/picture taking function
@@ -449,19 +448,7 @@ void setup() {
       Serial.println("System rebooted by watchdog timer or manual reset.");
       Serial.println();
     }
-    // ELSE LOG THE DATA TO SD CARD????
-
-    if (!sd.begin(chipSelect, SPI_HALF_SPEED)) {
-      //sd.initErrorHalt();
-      //startupFailure();
-      // NOT SURE HOW TO HANDLE THIS MID-FLIGHT
-      for (int x = 0; x < 10; x++) {
-        digitalWrite(programStartLED, HIGH);
-        delay(250);
-        digitalWrite(programStartLED, LOW);
-        delay(250);
-      }
-    }
+    else logDebug("System rebooted by watchdog timer or manual reset.");
   }
   else {
     initGps();
@@ -547,8 +534,17 @@ void setup() {
     Serial.print("Initializing SD card...");
   }
   if (!sd.begin(chipSelect, SPI_HALF_SPEED)) {
-    //sd.initErrorHalt();
-    startupFailure();
+    if (!setupComplete) startupFailure();
+    else {
+      if (debugMode) {
+        for (int x = 0; x < 10; x++) {
+          digitalWrite(programStartLED, HIGH);
+          delay(250);
+          digitalWrite(programStartLED, LOW);
+          delay(250);
+        }
+      }
+    }
   }
   if (debugMode) {
     Serial.println("complete.");
