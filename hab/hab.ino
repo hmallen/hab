@@ -40,6 +40,7 @@
    2 --> Landing phase
 
    TO DO:
+   - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
    - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
    - REMOVE SD LED FAILURE INDICATOR BEFORE LIVE LAUNCH
    - Add exception for sensor initialization if setupComplete is true??
@@ -49,7 +50,7 @@
    - Test if SMS stores in buffer when no signal and sends when reconnected
    - Add check to confirm GPRS is powered on (Need to find suitable function)
    -- Also check if similar function to indicate network connectivity
-   - Log incoming/outgoing SMS messages to SD card
+   - Gather sender number and log incoming/outgoing SMS messages to SD card
    - Consider setting sampling rate based on theoretical ascent rate
    - Cut-down
    - Change global variables to functions returning pointer arrays
@@ -61,7 +62,6 @@
    - Check if system resets if on external power and serial (computer debugging) is unplugged
    - Gas sensor calibration
    - Possible to use SMS command to reset system or place into "recovery" mode?
-   - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
    - Create LED flashes to indicate specific startup failure
    - Check if break in DOF logging for other data affects reconstruction
    -- Create program (?Python?) to extrapolate and fill in gaps ["smoothing function"]
