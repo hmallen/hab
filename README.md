@@ -8,6 +8,7 @@ TO DO:
 -- Time & Stress testing (payload heater @ sustained high current)
 
 Pre-launch Checklist:
+- Burn-in gas sensors for 24-48 hours
 - Set: debugMode = false
 - Set: debugSmsOff = false
 - Set: GASSENSORWARMUP to original duration
