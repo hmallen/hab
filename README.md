@@ -4,6 +4,8 @@ TO DO:
 - Weigh full payload package
 -- Determine hydrogen vs. helium w/ 600g balloon
 -- Determine parachute diameter
+- Test payload heater and gas sensors with battery arrays
+-- Time & Stress testing (payload heater @ sustained high current)
 
 Pre-launch Checklist:
 - Set: debugMode = false
