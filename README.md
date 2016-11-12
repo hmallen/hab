@@ -15,3 +15,6 @@ Pre-launch Checklist:
 - Set: GASSENSORWARMUP to original duration
 - Turn on roaming for GPRS
 - Clear SD card
+
+Considerations:
+- Balloon-Payload attachment rope shouldn't rotate freely about z-axis
