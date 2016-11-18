@@ -132,7 +132,8 @@ const int buzzerPin = 29;
 
 // Analog Pins
 const int lightPin = A0;
-const int gasPins[] = {A7, A8, A9, A10, A11, A12, A13, A14, A15};
+//const int gasPins[] = {A7, A8, A9, A10, A11, A12, A13, A14, A15};
+const int gasPins[] = {A9, A10, A11, A12, A13, A14};
 
 // Constants
 const char dof_log_file[] = "dof_log.txt";
@@ -162,8 +163,10 @@ float magX, magY, magZ;
 float dofRoll, dofPitch, dofHeading;
 float dofPressure, dofTemp, dofAlt;
 float ms5607Temp, ms5607Press;
-float gasValues[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-float gasValuesLast[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+//float gasValues[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+float gasValues[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+//float gasValuesLast[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+float gasValuesLast[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float shtTemp, shtHumidity;
 float lightVal;
 unsigned long buzzerStart;
