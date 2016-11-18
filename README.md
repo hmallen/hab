@@ -1,6 +1,7 @@
 # High-Altitude Balloon
 
 TO DO:
+- Ensure that gas sensors receiving correct (5V) voltage [2.5V was measured after first battery test]
 - Weigh full payload package
 -- Determine hydrogen vs. helium w/ 600g balloon
 -- Determine parachute diameter
@@ -14,3 +15,6 @@ Pre-launch Checklist:
 - Set: GASSENSORWARMUP to original duration
 - Turn on roaming for GPRS
 - Clear SD card
+
+Considerations:
+- Balloon-Payload attachment rope shouldn't rotate freely about z-axis
