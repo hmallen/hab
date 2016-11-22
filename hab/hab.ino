@@ -42,6 +42,8 @@
    TO DO:
    - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
    - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
+   - Stop reading gas sensors after descent?
+   - Make sure calls for buzzer use new variable ("buzzerRelay")
    - Add exception for sensor initialization if setupComplete is true??
    - Change "ada..." to "dof" for consistency
    - Add servo/picture taking function
@@ -119,21 +121,21 @@ const int shtData = 2;
 const int shtClock = 3;
 const int gasRelay = 7;  // Gas sensors
 const int heaterRelay = 6;  // Internal payload heater
-const int relayPin3 = 5;
+const int buzzerRelay = 5;
 const int relayPin4 = 4;
 const int smsPowerPin = 22;
 const int gpsPpsPin = 23;
-const int gpsReadyLED = 24; // Multi-color LED round-side input [Green]
-const int programStartPin = 25;
-const int programStartLED = 26; // Multi-color LED flat-side input [Red]
-const int programReadyPin = 27;
-const int heartbeatOutputPin = 28;
-const int buzzerPin = 29;
+const int programStartPin = 24;
+const int programReadyPin = 25;
+const int heartbeatOutputPin = 26;
+const int accessoryPin = 27;
+const int gpsReadyLED = 28; // Multi-color LED round-side input [Green]
+const int programStartLED = 29; // Multi-color LED flat-side input [Red]
 
 // Analog Pins
 const int lightPin = A0;
 //const int gasPins[] = {A7, A8, A9, A10, A11, A12, A13, A14, A15};
-const int gasPins[] = {A9, A10, A11, A12, A13, A14};
+const int gasPins[] = {A8, A9, A10, A11, A12, A13};
 
 // Constants
 const char dof_log_file[] = "dof_log.txt";
