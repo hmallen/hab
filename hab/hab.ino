@@ -42,6 +42,7 @@
    TO DO:
    - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
    - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
+   - Add MS5607 altitude????
    - Stop reading gas sensors after descent?
    - Make sure calls for buzzer use new variable ("buzzerRelay")
    - Add exception for sensor initialization if setupComplete is true??
@@ -85,8 +86,10 @@
 #include <SdFat.h>
 #include <SHT1x.h>
 #include <SPI.h>
+#include <string.h>
 #include <TimeLib.h>
 #include <TinyGPS++.h>
+#include <util/crc16.h>
 #include <Wire.h>
 
 // Definitions
@@ -123,6 +126,8 @@ const int gasRelay = 7;  // Gas sensors
 const int heaterRelay = 6;  // Internal payload heater
 const int buzzerRelay = 5;
 const int relayPin4 = 4;
+const int rttyEnablePin = 8;
+const int rttyTxPin = 9;
 const int smsPowerPin = 22;
 const int gpsPpsPin = 23;
 const int programStartPin = 24;
@@ -395,14 +400,16 @@ void setup() {
   pinMode(chipSelect, OUTPUT);
   pinMode(gasRelay, OUTPUT); digitalWrite(gasRelay, HIGH);  // Gas sensors
   pinMode(heaterRelay, OUTPUT); digitalWrite(heaterRelay, LOW); // Payload heater
-  pinMode(relayPin3, OUTPUT); digitalWrite(relayPin3, LOW);
+  pinMode(buzzerRelay, OUTPUT); digitalWrite(buzzerRelay, LOW);
   pinMode(relayPin4, OUTPUT); digitalWrite(relayPin4, LOW);
+  pinMode(rttyEnablePin, OUTPUT); digitalWrite(rttyEnablePin, LOW);
+  pinMode(rttyTxPin, OUTPUT);
   pinMode(smsPowerPin, OUTPUT); digitalWrite(smsPowerPin, LOW);
   pinMode(gpsReadyLED, OUTPUT); digitalWrite(gpsReadyLED, LOW);
   pinMode(programStartLED, OUTPUT); digitalWrite(programStartLED, LOW);
   pinMode(programReadyPin, OUTPUT); digitalWrite(programReadyPin, LOW);
   pinMode(heartbeatOutputPin, OUTPUT); digitalWrite(heartbeatOutputPin, LOW);
-  pinMode(buzzerPin, OUTPUT); digitalWrite(buzzerPin, LOW);
+  pinMode(buzzerRelay, OUTPUT); digitalWrite(buzzerRelay, LOW);
   pinMode(gpsPpsPin, INPUT_PULLUP);
   pinMode(programStartPin, INPUT_PULLUP);
 
@@ -434,6 +441,10 @@ void setup() {
       Serial.println();
     }
   }
+
+  if (debugMode) Serial.print("Setting PWM frequency for RTTY...");
+  rttySetFrequency(rttyTxPin, 1);
+  if (debugMode) Serial.println("complete.");
 
   setupComplete = EEPROM.read(0);
   if (setupComplete) {
@@ -684,7 +695,7 @@ void loop() {
     }
     else logData("aux");
 
-    if (digitalRead(buzzerPin) == HIGH && (millis() - buzzerStart) >= BUZZERACTIVETIME) digitalWrite(buzzerPin, LOW);
+    if (digitalRead(buzzerRelay) == HIGH && (millis() - buzzerStart) >= BUZZERACTIVETIME) digitalWrite(buzzerRelay, LOW);
 
     heartbeat();
   }
@@ -702,6 +713,11 @@ void loop() {
   }
   Serial.print("GPS Loop #: "); Serial.println(gpsLoopCount);
   gpsLoopCount++;
+
+  if (debugMode) Serial.print("Sending GPS data via RTTY...");
+  char gpsRttyString[] = "TEST STRING";
+  rttyTxData(gpsRttyString);
+  if (debugMode) Serial.println("complete.");
 
   if (debugMode) {
     debugGpsPrint();
@@ -1064,7 +1080,7 @@ void logData(String logType) {
     logFile.print(ms5607Valid); logFile.print(",");
     logFile.print(ms5607Press); logFile.print(",");
     logFile.print(ms5607Temp); logFile.print(",");
-    for (int x = 0; x < 9; x++) {
+    for (int x = 0; x < 6; x++) {
       logFile.print(gasValues[x]); logFile.print(",");
     }
     logFile.print(shtValid); logFile.print(",");
@@ -1145,7 +1161,7 @@ void debugAuxPrint() {
   Serial.print(ms5607Press); Serial.print("hPa, ");
   Serial.print(ms5607Temp); Serial.println("C");
   Serial.print("Gas Sensors: ");
-  for (int x = 0; x < 8; x++) {
+  for (int x = 0; x < 6; x++) {
     Serial.print(gasValues[x]); Serial.print(",");
   }
   Serial.println(gasValues[8]);
@@ -1237,10 +1253,10 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
       case 3:
         if (debugMode) Serial.print("SMS command #3 issued...");
 
-        digitalWrite(buzzerPin, HIGH);
+        digitalWrite(buzzerRelay, HIGH);
         if (debugMode) {
           delay(1000);
-          digitalWrite(buzzerPin, LOW);
+          digitalWrite(buzzerRelay, LOW);
         }
         else buzzerStart = millis();
         break;
@@ -1309,6 +1325,159 @@ void startupFailure() {
     delay(500);
   }
 }
+
+/*  ----
+    RTTY
+    ----  */
+
+void rttyTxData(char txString[]) {
+  char dataString[80];
+
+  digitalWrite(rttyEnablePin, HIGH);
+  delay(5);
+
+  snprintf(dataString, 80, txString); // Puts the text in the dataString
+  unsigned int CHECKSUM = rttyCRC16Checksum(dataString); // Calculates the checksum for this dataString
+  char checksum_str[6];
+  sprintf(checksum_str, "*%04X\n", CHECKSUM);
+  strcat(dataString, checksum_str);
+  rttyFeedString (dataString);
+
+  digitalWrite(rttyEnablePin, LOW);
+}
+
+void rttyFeedString (char * string) {
+  char c;
+
+  c = *string++;
+
+  while ( c != '\0') {
+    rttyFeedByte (c);
+    c = *string++;
+  }
+}
+
+void rttyFeedByte (char c) {
+  /* Simple function to sent each bit of a char to
+  ** rttyFeedBit function.
+  ** NB The bits are sent Least Significant Bit first
+  **
+  ** All chars should be preceded with a 0 and
+  ** proceded with a 1. 0 = Start bit; 1 = Stop bit
+  **
+  */
+
+  int i;
+
+  rttyFeedBit (0); // Start bit
+
+  // Send bits for for char LSB first
+
+  for (i = 0; i < 7; i++) { // Change this here 7 or 8 for ASCII-7 / ASCII-8
+    if (c & 1) rttyFeedBit(1);
+
+    else rttyFeedBit(0);
+
+    c = c >> 1;
+  }
+
+  rttyFeedBit (1); // Stop bit
+  rttyFeedBit (1); // Stop bit
+}
+
+void rttyFeedBit (int bit) {
+  if (bit) {
+    // high
+    analogWrite(rttyTxPin, 110);
+  }
+  else {
+    // low
+    analogWrite(rttyTxPin, 100);
+  }
+
+  // delayMicroseconds(3370); // 300 baud
+  delayMicroseconds(10000); // For 50 Baud uncomment this and the line below.
+  delayMicroseconds(10150); // Arduino delay limited so must be split into 2 calls to the function
+}
+
+uint16_t rttyCRC16Checksum (char *string) {
+  size_t i;
+  uint16_t crc;
+  uint8_t c;
+
+  crc = 0xFFFF;
+
+  // Calculate checksum ignoring the first two $s
+  for (i = 2; i < strlen(string); i++) {
+    c = string[i];
+    crc = _crc_xmodem_update (crc, c);
+  }
+
+  return crc;
+}
+
+void rttySetFrequency(int pin, int divisor) {
+  byte mode;
+  if (pin == 5 || pin == 6 || pin == 9 || pin == 10) {
+    switch (divisor) {
+      case 1:
+        mode = 0x01;
+        break;
+      case 8:
+        mode = 0x02;
+        break;
+      case 64:
+        mode = 0x03;
+        break;
+      case 256:
+        mode = 0x04;
+        break;
+      case 1024:
+        mode = 0x05;
+        break;
+      default:
+        return;
+    }
+    if (pin == 5 || pin == 6) {
+      TCCR0B = TCCR0B & 0b11111000 | mode;
+    }
+    else {
+      TCCR1B = TCCR1B & 0b11111000 | mode;
+    }
+  }
+  else if (pin == 3 || pin == 11) {
+    switch (divisor) {
+      case 1:
+        mode = 0x01;
+        break;
+      case 8:
+        mode = 0x02;
+        break;
+      case 32:
+        mode = 0x03;
+        break;
+      case 64:
+        mode = 0x04;
+        break;
+      case 128:
+        mode = 0x05;
+        break;
+      case 256:
+        mode = 0x06;
+        break;
+      case 1024:
+        mode = 0x7;
+        break;
+      default:
+        return;
+    }
+    TCCR2B = TCCR2B & 0b11111000 | mode;
+  }
+}
+
+/*  ---------
+    HEARTBEAT
+    ---------  */
 
 void heartbeat() {
   digitalWrite(heartbeatOutputPin, HIGH);
