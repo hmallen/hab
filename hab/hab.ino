@@ -710,7 +710,7 @@ void loop() {
   gpsLoopCount++;
 
   if (debugMode) Serial.print("Sending data via RTTY...");
-  // SEND RTTY DATA HERE
+  rttyProcessTx();
   if (debugMode) Serial.println("complete.");
 
   if (debugMode) {
