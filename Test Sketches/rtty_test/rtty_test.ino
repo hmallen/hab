@@ -19,6 +19,8 @@ float gpsAlt = 123.12;
 float gpsSpeed = 10.12;
 float gpsCourse = 234.56;
 float dofAlt = 123.34;
+float dofTemp = -10.12;
+float shtTemp = -30.34;
 
 void setup() {
   pinMode(radioPin, OUTPUT);
@@ -30,13 +32,15 @@ void loop() {
 }
 
 void rttyProcessTx() {
-  char rttyTxString[100];
+  char rttyTxString[128];
   char gpsLatChar[10];
   char gpsLngChar[10];
   char gpsAltChar[10];
   char gpsSpeedChar[10];
   char gpsCourseChar[10];
   char dofAltChar[10];
+  char dofTempChar[10];
+  char shtTempChar[10];
   char commaChar[] = ",";
 
   sprintf(rttyTxString, callsignHeader);
@@ -58,6 +62,12 @@ void rttyProcessTx() {
   strcat(rttyTxString, commaChar);
   dtostrf(dofAlt, 2, 2, dofAltChar);
   strcat(rttyTxString, dofAltChar);
+  strcat(rttyTxString, commaChar);
+  dtostrf(dofTemp, 2, 2, dofTempChar);
+  strcat(rttyTxString, dofTempChar);
+  strcat(rttyTxString, commaChar);
+  dtostrf(shtTemp, 2, 2, shtTempChar);
+  strcat(rttyTxString, shtTempChar);
 
   unsigned int CHECKSUM = rttyCRC16Checksum(rttyTxString);
   char checksum_str[6];
