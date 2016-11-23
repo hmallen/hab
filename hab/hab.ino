@@ -5,6 +5,7 @@
    - Sensor data acquisition
    - Relay control
    - SD data logging
+   - SSB RTTY transmission of position information at 434.250MHz
    - SMS notifications
 
    Sensors:
@@ -691,6 +692,10 @@ void loop() {
 
     if (digitalRead(buzzerRelay) == HIGH && (millis() - buzzerStart) >= BUZZERACTIVETIME) digitalWrite(buzzerRelay, LOW);
 
+    if (debugMode) Serial.print("Sending data via RTTY...");
+    rttyProcessTx();
+    if (debugMode) Serial.println("complete.");
+
     heartbeat();
   }
 
@@ -707,10 +712,6 @@ void loop() {
   }
   Serial.print("GPS Loop #: "); Serial.println(gpsLoopCount);
   gpsLoopCount++;
-
-  if (debugMode) Serial.print("Sending data via RTTY...");
-  rttyProcessTx();
-  if (debugMode) Serial.println("complete.");
 
   if (debugMode) {
     debugGpsPrint();
