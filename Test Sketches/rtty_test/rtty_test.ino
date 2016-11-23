@@ -110,7 +110,7 @@ void rttyTxBit (int bit) {
 
   delayMicroseconds(3370); // 300 baud
   //delayMicroseconds(10000); // For 50 Baud uncomment this and the line below.
-  //delayMicroseconds(10150); // 20150 doesn't work...16383 largest value Arduino can handle
+  //delayMicroseconds(10150); // 20150 doesn't work -- 16383 is the largest value Arduino can handle.
 }
 
 uint16_t rttyCRC16Checksum (char *string) {
