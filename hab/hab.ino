@@ -42,6 +42,7 @@
    TO DO:
    - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
    - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
+   - Add RTTY test TX before SMS confirmation?
    - Add MS5607 altitude????
    - Stop reading gas sensors after descent?
    - Make sure calls for buzzer use new variable ("buzzerRelay")
@@ -86,7 +87,6 @@
 #include <SdFat.h>
 #include <SHT1x.h>
 #include <SPI.h>
-#include <string.h>
 #include <TimeLib.h>
 #include <TinyGPS++.h>
 #include <util/crc16.h>
@@ -126,7 +126,6 @@ const int gasRelay = 7;  // Gas sensors
 const int heaterRelay = 6;  // Internal payload heater
 const int buzzerRelay = 5;
 const int relayPin4 = 4;
-const int rttyEnablePin = 8;
 const int rttyTxPin = 9;
 const int smsPowerPin = 22;
 const int gpsPpsPin = 23;
@@ -148,6 +147,7 @@ const char aux_log_file[] = "aux_log.txt";
 const char gps_log_file[] = "gps_log.txt";
 const char debug_log_file[] = "debug_log.txt";
 const char smsTargetNum[] = "+12145635266"; // Hunter
+const char callsignHeader[] = "$$KG5CKI";
 //const char smsTargetNum[] = "+18473733894"; // Callie
 
 // Global variables
@@ -402,7 +402,6 @@ void setup() {
   pinMode(heaterRelay, OUTPUT); digitalWrite(heaterRelay, LOW); // Payload heater
   pinMode(buzzerRelay, OUTPUT); digitalWrite(buzzerRelay, LOW);
   pinMode(relayPin4, OUTPUT); digitalWrite(relayPin4, LOW);
-  pinMode(rttyEnablePin, OUTPUT); digitalWrite(rttyEnablePin, LOW);
   pinMode(rttyTxPin, OUTPUT);
   pinMode(smsPowerPin, OUTPUT); digitalWrite(smsPowerPin, LOW);
   pinMode(gpsReadyLED, OUTPUT); digitalWrite(gpsReadyLED, LOW);
@@ -441,10 +440,6 @@ void setup() {
       Serial.println();
     }
   }
-
-  if (debugMode) Serial.print("Setting PWM frequency for RTTY...");
-  rttySetFrequency(rttyTxPin, 1);
-  if (debugMode) Serial.println("complete.");
 
   setupComplete = EEPROM.read(0);
   if (setupComplete) {
@@ -714,9 +709,8 @@ void loop() {
   Serial.print("GPS Loop #: "); Serial.println(gpsLoopCount);
   gpsLoopCount++;
 
-  if (debugMode) Serial.print("Sending GPS data via RTTY...");
-  char gpsRttyString[] = "TEST STRING";
-  rttyTxData(gpsRttyString);
+  if (debugMode) Serial.print("Sending data via RTTY...");
+  // SEND RTTY DATA HERE
   if (debugMode) Serial.println("complete.");
 
   if (debugMode) {
@@ -1330,150 +1324,7 @@ void startupFailure() {
     RTTY
     ----  */
 
-void rttyTxData(char txString[]) {
-  char dataString[80];
 
-  digitalWrite(rttyEnablePin, HIGH);
-  delay(5);
-
-  snprintf(dataString, 80, txString); // Puts the text in the dataString
-  unsigned int CHECKSUM = rttyCRC16Checksum(dataString); // Calculates the checksum for this dataString
-  char checksum_str[6];
-  sprintf(checksum_str, "*%04X\n", CHECKSUM);
-  strcat(dataString, checksum_str);
-  rttyFeedString (dataString);
-
-  digitalWrite(rttyEnablePin, LOW);
-}
-
-void rttyFeedString (char * string) {
-  char c;
-
-  c = *string++;
-
-  while ( c != '\0') {
-    rttyFeedByte (c);
-    c = *string++;
-  }
-}
-
-void rttyFeedByte (char c) {
-  /* Simple function to sent each bit of a char to
-  ** rttyFeedBit function.
-  ** NB The bits are sent Least Significant Bit first
-  **
-  ** All chars should be preceded with a 0 and
-  ** proceded with a 1. 0 = Start bit; 1 = Stop bit
-  **
-  */
-
-  int i;
-
-  rttyFeedBit (0); // Start bit
-
-  // Send bits for for char LSB first
-
-  for (i = 0; i < 7; i++) { // Change this here 7 or 8 for ASCII-7 / ASCII-8
-    if (c & 1) rttyFeedBit(1);
-
-    else rttyFeedBit(0);
-
-    c = c >> 1;
-  }
-
-  rttyFeedBit (1); // Stop bit
-  rttyFeedBit (1); // Stop bit
-}
-
-void rttyFeedBit (int bit) {
-  if (bit) {
-    // high
-    analogWrite(rttyTxPin, 110);
-  }
-  else {
-    // low
-    analogWrite(rttyTxPin, 100);
-  }
-
-  // delayMicroseconds(3370); // 300 baud
-  delayMicroseconds(10000); // For 50 Baud uncomment this and the line below.
-  delayMicroseconds(10150); // Arduino delay limited so must be split into 2 calls to the function
-}
-
-uint16_t rttyCRC16Checksum (char *string) {
-  size_t i;
-  uint16_t crc;
-  uint8_t c;
-
-  crc = 0xFFFF;
-
-  // Calculate checksum ignoring the first two $s
-  for (i = 2; i < strlen(string); i++) {
-    c = string[i];
-    crc = _crc_xmodem_update (crc, c);
-  }
-
-  return crc;
-}
-
-void rttySetFrequency(int pin, int divisor) {
-  byte mode;
-  if (pin == 5 || pin == 6 || pin == 9 || pin == 10) {
-    switch (divisor) {
-      case 1:
-        mode = 0x01;
-        break;
-      case 8:
-        mode = 0x02;
-        break;
-      case 64:
-        mode = 0x03;
-        break;
-      case 256:
-        mode = 0x04;
-        break;
-      case 1024:
-        mode = 0x05;
-        break;
-      default:
-        return;
-    }
-    if (pin == 5 || pin == 6) {
-      TCCR0B = TCCR0B & 0b11111000 | mode;
-    }
-    else {
-      TCCR1B = TCCR1B & 0b11111000 | mode;
-    }
-  }
-  else if (pin == 3 || pin == 11) {
-    switch (divisor) {
-      case 1:
-        mode = 0x01;
-        break;
-      case 8:
-        mode = 0x02;
-        break;
-      case 32:
-        mode = 0x03;
-        break;
-      case 64:
-        mode = 0x04;
-        break;
-      case 128:
-        mode = 0x05;
-        break;
-      case 256:
-        mode = 0x06;
-        break;
-      case 1024:
-        mode = 0x7;
-        break;
-      default:
-        return;
-    }
-    TCCR2B = TCCR2B & 0b11111000 | mode;
-  }
-}
 
 /*  ---------
     HEARTBEAT

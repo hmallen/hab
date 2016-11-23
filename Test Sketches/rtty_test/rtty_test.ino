@@ -11,13 +11,14 @@
 
 const int radioPin = 9;
 
-char callsignHeader[] = "$KG5CKI";
+const char callsignHeader[] = "$$KG5CKI";
 
 float gpsLat = 30.123456;
 float gpsLng = 31.123456;
 float gpsAlt = 123.12;
 float gpsSpeed = 10.12;
 float gpsCourse = 234.56;
+float dofAlt = 123.34
 
 void setup() {
   pinMode(radioPin, OUTPUT);
@@ -29,42 +30,44 @@ void loop() {
 }
 
 void rttyProcessTx() {
-  char datastring[100];
+  char rttyTxString[100];
   char gpsLatChar[10];
   char gpsLngChar[10];
   char gpsAltChar[10];
   char gpsSpeedChar[10];
   char gpsCourseChar[10];
   char dofAltChar[10];
-
   char commaChar[] = ",";
 
-  sprintf(datastring, callsignHeader);
-  strcat(datastring, commaChar);
+  sprintf(rttyTxString, callsignHeader);
+  strcat(rttyTxString, commaChar);
   dtostrf(gpsLat, 2, 6, gpsLatChar);
-  strcat(datastring, gpsLatChar);
-  strcat(datastring, commaChar);
+  strcat(rttyTxString, gpsLatChar);
+  strcat(rttyTxString, commaChar);
   dtostrf(gpsLng, 2, 6, gpsLngChar);
-  strcat(datastring, gpsLngChar);
-  strcat(datastring, commaChar);
+  strcat(rttyTxString, gpsLngChar);
+  strcat(rttyTxString, commaChar);
   dtostrf(gpsAlt, 2, 2, gpsAltChar);
-  strcat(datastring, gpsAltChar);
-  strcat(datastring, commaChar);
+  strcat(rttyTxString, gpsAltChar);
+  strcat(rttyTxString, commaChar);
   dtostrf(gpsSpeed, 2, 2, gpsSpeedChar);
-  strcat(datastring, gpsSpeedChar);
-  strcat(datastring, commaChar);
+  strcat(rttyTxString, gpsSpeedChar);
+  strcat(rttyTxString, commaChar);
   dtostrf(gpsCourse, 2, 2, gpsCourseChar);
-  strcat(datastring, gpsCourseChar);
+  strcat(rttyTxString, gpsCourseChar);
+  strcat(rttyTxString, commaChar);
+  dtostrf(dofAlt, 2, 2, dofAltChar);
+  strcat(rttyTxString, dofAltChar);
 
-  unsigned int CHECKSUM = rttyCRC16Checksum(datastring);  // Calculates the checksum for this datastring
+  unsigned int CHECKSUM = rttyCRC16Checksum(rttyTxString);
   char checksum_str[6];
   sprintf(checksum_str, "*%04X\n", CHECKSUM);
-  strcat(datastring, checksum_str);
+  strcat(rttyTxString, checksum_str);
 
-  rttyTxString (datastring);
+  rttyTxData(rttyTxString);
 }
 
-void rttyTxString (char * string) {
+void rttyTxData (char * string) {
   /* Simple function to sent a char at a time to
      ** rttyTxByte function.
     ** NB Each char is one byte (8 Bits)
@@ -105,9 +108,9 @@ void rttyTxBit (int bit) {
   if (bit) digitalWrite(radioPin, HIGH);
   else digitalWrite(radioPin, LOW);
 
-  //delayMicroseconds(3370); // 300 baud
-  delayMicroseconds(10000); // For 50 Baud uncomment this and the line below.
-  delayMicroseconds(10150); // 20150 doesn't work...16383 largest value Arduino can handle
+  delayMicroseconds(3370); // 300 baud
+  //delayMicroseconds(10000); // For 50 Baud uncomment this and the line below.
+  //delayMicroseconds(10150); // 20150 doesn't work...16383 largest value Arduino can handle
 }
 
 uint16_t rttyCRC16Checksum (char *string) {
