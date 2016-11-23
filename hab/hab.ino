@@ -1362,7 +1362,7 @@ void rttyProcessTx() {
   rttyTxData(rttyTxString);
 }
 
-void rttyTxData (char * string) {
+void rttyTxData (char *string) {
   /* Simple function to sent a char at a time to
      ** rttyTxByte function.
     ** NB Each char is one byte (8 Bits)

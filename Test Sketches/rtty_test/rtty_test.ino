@@ -18,7 +18,7 @@ float gpsLng = 31.123456;
 float gpsAlt = 123.12;
 float gpsSpeed = 10.12;
 float gpsCourse = 234.56;
-float dofAlt = 123.34
+float dofAlt = 123.34;
 
 void setup() {
   pinMode(radioPin, OUTPUT);
@@ -67,7 +67,7 @@ void rttyProcessTx() {
   rttyTxData(rttyTxString);
 }
 
-void rttyTxData (char * string) {
+void rttyTxData (char *string) {
   /* Simple function to sent a char at a time to
      ** rttyTxByte function.
     ** NB Each char is one byte (8 Bits)
