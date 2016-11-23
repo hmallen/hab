@@ -148,7 +148,6 @@ const char gps_log_file[] = "gps_log.txt";
 const char debug_log_file[] = "debug_log.txt";
 const char smsTargetNum[] = "+12145635266"; // Hunter
 const char callsignHeader[] = "$$KG5CKI";
-//const char smsTargetNum[] = "+18473733894"; // Callie
 
 // Global variables
 bool gpsTimeSet = false;
