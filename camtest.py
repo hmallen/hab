@@ -18,18 +18,7 @@
 
 from picamera import PiCamera
 from time import sleep
-import sys
 import subprocess
-import RPi.GPIO as gpio
-
-inputStart = 17
-inputPeak = 18
-inputLanding = 19
-gpioInputs = [inputStart, inputPeak, inputLanding]
-
-gpio.setwarnings(False)
-gpio.setmode(gpio.BOARD)
-gpio.setup(gpioInputs, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 camDown = '/dev/video0' # CHECK THAT THIS IS CORRECT
 camUp = '/dev/video1'   # CHECK THAT THIS IS CORRECT
@@ -52,15 +41,9 @@ def capture_video(camera):
     elif camera == 2:
         # AVCONV (camUp)
 
-while (!gpio.input(inputStart)):
-    sleep(1)
-
 capture_photo()
 sleep(30)
 # DO STUFF & THINGS
-
-while (true):
-    # MAIN LOOP POST-TAKEOFF VIDEO RECORDING
 
 popen_string = 'python exchange_lorenz_tradeexecution_v2.py -s buy'
 order = subprocess.Popen([popen_string], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
