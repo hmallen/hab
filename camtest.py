@@ -26,27 +26,38 @@ camera = PiCamera()
 
 
 def capture_photo(cam):
-    if cam == 0:
+    webcamCommand = 'fswebcam'
+    if cam == 'rpi':
         camera.start_preview(2)
         camera.capture('test.jpg')
-    elif cam == 1:
-        print 'TEST'  # FSWEBCAM (camDown)
-    elif cam == 2:
+    elif cam == 'up':
+        order = subprocess.Popen([popen_string], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = order.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
+    elif cam == 'down':
         print 'TEST'  # FSWEBCAM (camUp)
 
 
 def capture_video(cam):
-    if cam == 0:
+    webcamCommand = 'avconv'
+    if cam == 'rpi':
         print 'TEST'  # RASPIVID
-    elif cam == 1:
+    elif cam == 'up':
         print 'TEST'  # AVCONV (camDown)
-    elif cam == 2:
+    elif cam == 'down':
         print 'TEST'  # AVCONV (camUp)
 
 
-capture_photo(0)
-sleep(30)
-# DO STUFF & THINGS
+capture_photo('rpi')
+capture_photo('up')
+capture_photo('down')
+capture_video('rpi')
+capture_video('up')
+capture_video('down')
+
+while True:
+    sleep(60)
 
 popen_string = 'python exchange_lorenz_tradeexecution_v2.py -s buy'
 order = subprocess.Popen([popen_string], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
