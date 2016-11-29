@@ -33,31 +33,35 @@ def capture_photo(camType):
         camera.start_preview(2)
         camera.capture(filename)
     elif camType == 'up':
-        popenCommand = subprocess.Popen('./up_photo.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        popenString = './webcam_photo.sh 0'
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
     elif camType == 'down':
-        popenCommand = subprocess.Popen('./down_photo.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        popenString = './webcam_photo.sh 1'
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
 
 
-def capture_video(camType):
+def capture_video(camType, vidLength):
     if camType == 'rpi':
         timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
         filename = '~/icarus_one/media/photos/RPI-' + timestamp + '.mp4'
         camera.start_recording(filename)
-        camera.wait_recording(5)
+        camera.wait_recording(vidLength)
         camera.stop_recording()
     elif camType == 'up':
-        popenCommand = subprocess.Popen('./up_video.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        popenString = './webcam_video.sh 0' + ' ' + vidLength
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
     elif camType == 'down':
-        popenCommand = subprocess.Popen('./down_video.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        popenString = './webcam_video.sh 1' + ' ' + vidLength
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
