@@ -15,6 +15,9 @@
 # - Capture from down-facing webcam during takeoff phase
 # - Capture from up-facing webcam when approaching peak through ~+0:60 seconds
 #
+# Considerations:
+# - CAN take photos with picamera while recording video from webcam (AC 2.4A power supply)
+# - CANNOT record video from both webcams simultaneously (AC 2.4A power supply)
 
 import datetime
 import picamera
@@ -22,8 +25,9 @@ import subprocess
 import sys
 from time import sleep
 
-camDown = '/dev/video0'  # CHECK THAT THIS IS CORRECT
-camUp = '/dev/video1'    # CHECK THAT THIS IS CORRECT
+camPi = 'rpi'
+camDown = 'down'
+camUp = 'up'
 camera = picamera.PiCamera()
 
 
@@ -76,12 +80,12 @@ def capture_video(camType, vidLength):
         error = std_err.strip('\n')
 
 
-capture_photo('rpi')
-capture_photo('up')
-capture_photo('down')
-capture_video('rpi', 5)
-capture_video('up', 5)
-capture_video('down', 5)
+capture_photo(camPi)
+capture_photo(camUp)
+capture_photo(camDown)
+capture_video(camPi, 5)
+capture_video(camUp, 5)
+capture_video(camDown, 5)
 
 print 'Finished!'
 

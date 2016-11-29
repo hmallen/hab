@@ -16,18 +16,17 @@
 # - Capture from up-facing webcam when approaching peak through ~+0:60 seconds
 #
 
-from picamera import PiCamera
-from time import sleep
-import subprocess
+import datetime
+import picamera
 import RPi.GPIO
+import subprocess
+import sys
+from time import sleep
 
-camDown = '/dev/video0'  # CHECK THAT THIS IS CORRECT
-camUp = '/dev/video1'    # CHECK THAT THIS IS CORRECT
-camera = PiCamera()
-
-mediaPrefix = '~/icarus_one/media/photos/UP-'
-photoSuffix = '.jpg'
-videoSuffix = '.avi'
+camPi = 'rpi'
+camDown = 'down'
+camUp = 'up'
+camera = picamera.PiCamera()
 
 gpio = RPi.GPIO()
 
@@ -42,22 +41,52 @@ gpio.setup(gpioInputs, gpio.IN, pull_up_down=gpio.PUD_DOWN)
 
 
 def capture_photo(camType):
-    if camType == 0:
-        camera.start_preview(2)
-        camera.capture('test.jpg')
-    elif camType == 1:
-        print 'TEST'  # FSWEBCAM (camDown)
-    elif camType == 2:
-        print 'TEST'  # FSWEBCAM (camUp)
+    if camType == 'rpi':
+        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        filename = 'media/photos/RPI-' + timestamp + '.jpg'
+        camera.start_preview()
+        sleep(2)
+        camera.capture(filename)
+    elif camType == 'up':
+        popenString = './webcam_photo.sh 0'
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
+    elif camType == 'down':
+        popenString = './webcam_photo.sh 1'
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
 
 
-def capture_video(camType):
-    if camType == 0:
-        print 'TEST'  # RASPIVID
-    elif camType == 1:
-        print 'TEST'  # AVCONV (camDown)
-    elif camType == 2:
-        print 'TEST'  # AVCONV (camUp)
+def capture_video(camType, vidLength):
+    if camType == 'rpi':
+        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        filename = 'media/videos/h264/RPI-' + timestamp + '.h264'
+        fileconverted = 'media/videos/RPI-' + timestamp + '.mp4'
+        camera.start_recording(filename)
+        camera.wait_recording(vidLength)
+        camera.stop_recording()
+
+        popenString = './h264_convert.sh ' + filename + ' ' + fileconverted
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
+    elif camType == 'up':
+        popenString = './webcam_video.sh 0' + ' ' + str(vidLength)
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
+    elif camType == 'down':
+        popenString = './webcam_video.sh 1' + ' ' + str(vidLength)
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
 
 
 while not gpio.input(inputStart):
@@ -69,9 +98,3 @@ sleep(30)
 
 while True:
     print 'TEST'  # MAIN LOOP POST-TAKEOFF VIDEO RECORDING
-
-popen_string = 'python exchange_lorenz_tradeexecution_v2.py -s buy'
-order = subprocess.Popen([popen_string], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-std_out, std_err = order.communicate()
-status = std_out.strip('\n')
-error = std_err.strip('\n')
