@@ -55,13 +55,13 @@ def capture_video(camType, vidLength):
         camera.wait_recording(vidLength)
         camera.stop_recording()
     elif camType == 'up':
-        popenString = './webcam_video.sh 0' + ' ' + vidLength
+        popenString = './webcam_video.sh 0' + ' ' + str(vidLength)
         popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
     elif camType == 'down':
-        popenString = './webcam_video.sh 1' + ' ' + vidLength
+        popenString = './webcam_video.sh 1' + ' ' + str(vidLength)
         popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
