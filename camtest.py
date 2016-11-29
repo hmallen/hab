@@ -51,10 +51,21 @@ def capture_photo(camType):
 def capture_video(camType, vidLength):
     if camType == 'rpi':
         timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
-        filename = 'media/videos/RPI-' + timestamp + '.h264'
-        camera.start_recording(filename)
+        filenameraw = 'media/videos/RPI-' + timestamp + '.h264'
+        filename = 'media/videos/RPI-' + timestamp + '.mp4'
+        camera.start_recording(filenameraw)
         camera.wait_recording(vidLength)
         camera.stop_recording()
+        popenString = 'sudo rm ' + filenameraw
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
+        popenString = 'sudo avconv -i' + filenameraw + '-preset ultrafast -crf 27 ' + filename
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
     elif camType == 'up':
         popenString = './webcam_video.sh 0' + ' ' + str(vidLength)
         popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
