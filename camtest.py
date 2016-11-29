@@ -17,13 +17,13 @@
 #
 
 import datetime
-from picamera import PiCamera
+import picamera
 import subprocess
 from time import sleep
 
 camDown = '/dev/video0'  # CHECK THAT THIS IS CORRECT
 camUp = '/dev/video1'    # CHECK THAT THIS IS CORRECT
-camera = PiCamera()
+camera = picamera.PiCamera()
 
 
 def capture_photo(camType):
@@ -34,12 +34,12 @@ def capture_photo(camType):
         camera.capture(filename)
     elif camType == 'up':
         popenCommand = subprocess.Popen('./up_photo.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        std_out, std_err = order.communicate()
+        std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
     elif camType == 'down':
         popenCommand = subprocess.Popen('./down_photo.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        std_out, std_err = order.communicate()
+        std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
 
@@ -47,17 +47,18 @@ def capture_photo(camType):
 def capture_video(camType):
     if camType == 'rpi':
         timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
-        filename = '~/icarus_one/media/photos/RPI-' + timestamp + '.jpg'
-        camera.start_preview(2)
-        camera.capture(filename)
+        filename = '~/icarus_one/media/photos/RPI-' + timestamp + '.mp4'
+        camera.start_recording(filename)
+        camera.wait_recording(5)
+        camera.stop_recording()
     elif camType == 'up':
         popenCommand = subprocess.Popen('./up_video.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        std_out, std_err = order.communicate()
+        std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
     elif camType == 'down':
         popenCommand = subprocess.Popen('./down_video.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        std_out, std_err = order.communicate()
+        std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
 
@@ -71,9 +72,3 @@ capture_video('down')
 
 while True:
     sleep(60)
-
-popen_string = 'python exchange_lorenz_tradeexecution_v2.py -s buy'
-order = subprocess.Popen([popen_string], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-std_out, std_err = order.communicate()
-status = std_out.strip('\n')
-error = std_err.strip('\n')
