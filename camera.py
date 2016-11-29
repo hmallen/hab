@@ -37,22 +37,22 @@ gpio.setmode(gpio.BOARD)
 gpio.setup(gpioInputs, gpio.IN, pull_up_down=gpio.PUD_DOWN)
 
 
-def capture_photo(cam):
-    if cam == 0:
+def capture_photo(camType):
+    if camType == 0:
         camera.start_preview(2)
         camera.capture('test.jpg')
-    elif cam == 1:
+    elif camType == 1:
         print 'TEST'  # FSWEBCAM (camDown)
-    elif cam == 2:
+    elif camType == 2:
         print 'TEST'  # FSWEBCAM (camUp)
 
 
-def capture_video(cam):
-    if cam == 0:
+def capture_video(camType):
+    if camType == 0:
         print 'TEST'  # RASPIVID
-    elif cam == 1:
+    elif camType == 1:
         print 'TEST'  # AVCONV (camDown)
-    elif cam == 2:
+    elif camType == 2:
         print 'TEST'  # AVCONV (camUp)
 
 

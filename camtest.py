@@ -25,27 +25,27 @@ camUp = '/dev/video1'    # CHECK THAT THIS IS CORRECT
 camera = PiCamera()
 
 
-def capture_photo(cam):
+def capture_photo(camType):
     webcamCommand = 'fswebcam'
-    if cam == 'rpi':
+    if camType == 'rpi':
         camera.start_preview(2)
         camera.capture('test.jpg')
-    elif cam == 'up':
+    elif camType == 'up':
         order = subprocess.Popen([popen_string], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = order.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
-    elif cam == 'down':
+    elif camType == 'down':
         print 'TEST'  # FSWEBCAM (camUp)
 
 
-def capture_video(cam):
+def capture_video(camType):
     webcamCommand = 'avconv'
-    if cam == 'rpi':
+    if camType == 'rpi':
         print 'TEST'  # RASPIVID
-    elif cam == 'up':
+    elif camType == 'up':
         print 'TEST'  # AVCONV (camDown)
-    elif cam == 'down':
+    elif camType == 'down':
         print 'TEST'  # AVCONV (camUp)
 
 
