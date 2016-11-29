@@ -30,7 +30,8 @@ def capture_photo(camType):
     if camType == 'rpi':
         timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
         filename = '~/icarus_one/media/photos/RPI-' + timestamp + '.jpg'
-        camera.start_preview(2)
+        camera.start_preview()
+        sleep(2)
         camera.capture(filename)
     elif camType == 'up':
         popenString = './webcam_photo.sh 0'
