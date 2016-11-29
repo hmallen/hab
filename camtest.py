@@ -19,6 +19,7 @@
 import datetime
 import picamera
 import subprocess
+import sys
 from time import sleep
 
 camDown = '/dev/video0'  # CHECK THAT THIS IS CORRECT
@@ -75,5 +76,6 @@ capture_video('rpi', 5)
 capture_video('up', 5)
 capture_video('down', 5)
 
-while True:
-    sleep(60)
+print 'Finished!'
+
+sys.exit()
