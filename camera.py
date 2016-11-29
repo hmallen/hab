@@ -25,6 +25,10 @@ camDown = '/dev/video0'  # CHECK THAT THIS IS CORRECT
 camUp = '/dev/video1'    # CHECK THAT THIS IS CORRECT
 camera = PiCamera()
 
+mediaPrefix = '~/icarus_one/media/photos/UP-'
+photoSuffix = '.jpg'
+videoSuffix = '.avi'
+
 gpio = RPi.GPIO()
 
 inputStart = 17

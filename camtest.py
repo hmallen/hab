@@ -16,9 +16,10 @@
 # - Capture from up-facing webcam when approaching peak through ~+0:60 seconds
 #
 
+import datetime
 from picamera import PiCamera
-from time import sleep
 import subprocess
+from time import sleep
 
 camDown = '/dev/video0'  # CHECK THAT THIS IS CORRECT
 camUp = '/dev/video1'    # CHECK THAT THIS IS CORRECT
@@ -26,27 +27,39 @@ camera = PiCamera()
 
 
 def capture_photo(camType):
-    webcamCommand = 'fswebcam'
     if camType == 'rpi':
+        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        filename = '~/icarus_one/media/photos/RPI-' + timestamp + '.jpg'
         camera.start_preview(2)
-        camera.capture('test.jpg')
+        camera.capture(filename)
     elif camType == 'up':
-        order = subprocess.Popen([popen_string], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        popenCommand = subprocess.Popen('./up_photo.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = order.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
     elif camType == 'down':
-        print 'TEST'  # FSWEBCAM (camUp)
+        popenCommand = subprocess.Popen('./down_photo.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = order.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
 
 
 def capture_video(camType):
-    webcamCommand = 'avconv'
     if camType == 'rpi':
-        print 'TEST'  # RASPIVID
+        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        filename = '~/icarus_one/media/photos/RPI-' + timestamp + '.jpg'
+        camera.start_preview(2)
+        camera.capture(filename)
     elif camType == 'up':
-        print 'TEST'  # AVCONV (camDown)
+        popenCommand = subprocess.Popen('./up_video.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = order.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
     elif camType == 'down':
-        print 'TEST'  # AVCONV (camUp)
+        popenCommand = subprocess.Popen('./down_video.sh', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = order.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
 
 
 capture_photo('rpi')

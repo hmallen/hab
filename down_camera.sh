@@ -1,7 +1,7 @@
 #!/bin/sh
 
 PREFIX="~/icarus_one/media/photos/DOWN-"
-DATE=$(date +"%Y-%m-%d_%H%M%S")
+DATE=$(date +"%m%d%Y-%H%M%S")
 SUFFIX=".jpg"
 
 FILE=$PREFIX$DATE$SUFFIX
