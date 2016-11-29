@@ -18,9 +18,14 @@
 
 from picamera import PiCamera
 from time import sleep
-import sys
 import subprocess
-import RPi.GPIO as gpio
+import RPi.GPIO
+
+camDown = '/dev/video0'  # CHECK THAT THIS IS CORRECT
+camUp = '/dev/video1'    # CHECK THAT THIS IS CORRECT
+camera = PiCamera()
+
+gpio = RPi.GPIO()
 
 inputStart = 17
 inputPeak = 18
@@ -29,48 +34,40 @@ gpioInputs = [inputStart, inputPeak, inputLanding]
 
 gpio.setwarnings(False)
 gpio.setmode(gpio.BOARD)
-gpio.setup(gpioInputs, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+gpio.setup(gpioInputs, gpio.IN, pull_up_down=gpio.PUD_DOWN)
 
-camDown = '/dev/video0' # CHECK THAT THIS IS CORRECT
-camUp = '/dev/video1'   # CHECK THAT THIS IS CORRECT
-camera = PiCamera()
 
-def capture_photo(camera):
-    if camera == 0:
+def capture_photo(cam):
+    if cam == 0:
         camera.start_preview(2)
         camera.capture('test.jpg')
-    elif camera == 1:
-        # FSWEBCAM (camDown)
-    elif camera == 2:
-        # FSWEBCAM (camUp)
+    elif cam == 1:
+        print 'TEST'  # FSWEBCAM (camDown)
+    elif cam == 2:
+        print 'TEST'  # FSWEBCAM (camUp)
 
-def capture_video(camera):
-    if camera == 0:
-        # RASPIVID
-    elif camera == 1:
-        # AVCONV (camDown)
-    elif camera == 2:
-        # AVCONV (camUp)
 
-while (!gpio.input(inputStart)):
+def capture_video(cam):
+    if cam == 0:
+        print 'TEST'  # RASPIVID
+    elif cam == 1:
+        print 'TEST'  # AVCONV (camDown)
+    elif cam == 2:
+        print 'TEST'  # AVCONV (camUp)
+
+
+while not gpio.input(inputStart):
     sleep(1)
 
-capture_photo()
+capture_photo(0)
 sleep(30)
 # DO STUFF & THINGS
 
-while (true):
-    # MAIN LOOP POST-TAKEOFF VIDEO RECORDING
+while True:
+    print 'TEST'  # MAIN LOOP POST-TAKEOFF VIDEO RECORDING
 
 popen_string = 'python exchange_lorenz_tradeexecution_v2.py -s buy'
 order = subprocess.Popen([popen_string], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 std_out, std_err = order.communicate()
 status = std_out.strip('\n')
 error = std_err.strip('\n')
-
-if status == '0':
-    return status
-elif status == '1':
-    return status
-else:
-    return error
