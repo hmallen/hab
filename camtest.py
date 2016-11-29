@@ -56,12 +56,12 @@ def capture_video(camType, vidLength):
         camera.start_recording(filenameraw)
         camera.wait_recording(vidLength)
         camera.stop_recording()
-        popenString = 'sudo rm ' + filenameraw
+        popenString = 'sudo avconv -i' + filenameraw + '-preset ultrafast -crf 27 ' + filename
         popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
-        popenString = 'sudo avconv -i' + filenameraw + '-preset ultrafast -crf 27 ' + filename
+        popenString = 'sudo rm ' + filenameraw
         popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
