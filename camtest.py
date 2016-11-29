@@ -51,7 +51,7 @@ def capture_photo(camType):
 def capture_video(camType, vidLength):
     if camType == 'rpi':
         timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
-        filename = 'media/photos/RPI-' + timestamp + '.h264'
+        filename = 'media/videos/RPI-' + timestamp + '.h264'
         camera.start_recording(filename)
         camera.wait_recording(vidLength)
         camera.stop_recording()
