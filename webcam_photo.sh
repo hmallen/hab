@@ -14,4 +14,4 @@ SUFFIX=".jpg"
 
 FILE=$PREFIX$DATE$SUFFIX
 
-sudo fswebcam --no-banner -r 1280x720 $FILE
+sudo fswebcam --no-banner -i /dev/video$1 -r 1280x720 $FILE
