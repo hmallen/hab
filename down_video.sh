@@ -1,7 +1,7 @@
 #!/bin/bash
 
 VIDEOSOURCE=$0
-((LENGTHSEC=$1)))
+((LENGTHSEC=$1))
 ((FPS=12))
 ((LENGTH=FPS*LENGTHSEC))
 
