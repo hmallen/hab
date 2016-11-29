@@ -7,11 +7,10 @@ else
 CAMTYPE="DOWN-"
 fi
 
-PREFIXDIR="media/photos/"
-PREFIX=$PREFIXDIR$CAMTYPE
+PREFIX="media/photos/"
 DATE=$(date +"%m%d%Y-%H%M%S")
 SUFFIX=".jpg"
 
-FILE=$PREFIX$DATE$SUFFIX
+FILE=$PREFIX$CAMTYPE$DATE$SUFFIX
 
 sudo fswebcam --no-banner -d /dev/video$1 -r 1280x720 $FILE

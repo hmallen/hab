@@ -11,8 +11,7 @@ else
 CAMTYPE="DOWN-"
 fi
 
-PREFIXDIR="media/videos/"
-PREFIX=$CAMTYPE$PREFIXDIR
+PREFIX="media/videos/"
 DATE=$(date +"%m%d%Y-%H%M%S")
 SUFFIX=".mp4"
 
