@@ -70,9 +70,9 @@ def capture_video(camType, vidLength):
 capture_photo('rpi')
 capture_photo('up')
 capture_photo('down')
-capture_video('rpi')
-capture_video('up')
-capture_video('down')
+capture_video('rpi', 5)
+capture_video('up', 5)
+capture_video('down', 5)
 
 while True:
     sleep(60)

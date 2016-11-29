@@ -1,21 +1,17 @@
 #!/bin/bash
 
-VIDEOSOURCE=$1
-LENGTHSEC=$2
-FPS=15
-((LENGTH=FPS*LENGTHSEC))
+if [ "$1" = "0" ]
+then
+CAMTYPE="UP-"
+else
+CAMTYPE="DOWN-"
+fi
 
-echo $VIDEOSOURCE
-echo $LENGTHSEC
-echo $FPS
-echo $LENGTH
-
-PREFIX="media/videos/DOWN-"
+PREFIXDIR="media/photos/"
+PREFIX=$PREFIXDIR$CAMTYPE
 DATE=$(date +"%m%d%Y-%H%M%S")
-SUFFIX=".mp4"
+SUFFIX=".jpg"
 
 FILE=$PREFIX$DATE$SUFFIX
 
-sudo streamer -c /dev/video$VIDEOSOURCE -s 640x480 -f jpeg -t $LENGTH -r $FPS -j 75 -w 0 -o tmp/tmp.avi &&
-sudo avconv -i tmp/tmp.avi -preset ultrafast -crf 27 $FILE &&
-sudo rm tmp/tmp.avi
+sudo fswebcam --no-banner -r 1280x720 $FILE
