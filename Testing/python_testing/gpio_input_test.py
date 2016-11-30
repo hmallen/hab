@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-input RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 from time import sleep
 
 gpioInputs = [15, 16]
