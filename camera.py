@@ -20,8 +20,10 @@ import datetime
 import picamera
 import RPi.GPIO
 import subprocess
-import sys
 from time import sleep
+from timeit import default_timer as timer
+
+takeoffBreakTime = 600
 
 camPi = 'rpi'
 camDown = 'down'
@@ -30,14 +32,11 @@ camera = picamera.PiCamera()
 
 gpio = RPi.GPIO()
 
-inputStart = 17
-inputPeak = 18
-inputLanding = 19
-gpioInputs = [inputStart, inputPeak, inputLanding]
+gpioInput = 17
 
 gpio.setwarnings(False)
 gpio.setmode(gpio.BOARD)
-gpio.setup(gpioInputs, gpio.IN, pull_up_down=gpio.PUD_DOWN)
+gpio.setup(gpioInput, gpio.IN, pull_up_down=gpio.PUD_DOWN)
 
 
 def capture_photo(camType):
@@ -85,9 +84,17 @@ def capture_video(camType, vidLength):
 while not gpio.input(inputStart):
     sleep(1)
 
-capture_photo(0)
-sleep(30)
-# DO STUFF & THINGS
+startTime = timer()
+startTimeStatic = startTime
+while gpio.input(inputStart):
+    capture_video(camDown, 60)
+    while (timer() - startTime) <= 60:
+        sleep(1)
+        capture_photo(camPi)
+        sleep(1)
+        capture_photo(camUp)
+        sleep (10)
+    startTime = timer()
+    if (startTime - startTimeStatic) > takeoffBreakTime:
+        break
 
-while True:
-    print 'TEST'  # MAIN LOOP POST-TAKEOFF VIDEO RECORDING
