@@ -18,11 +18,15 @@
 
 import datetime
 import picamera
-import RPi.GPIO
+#import RPi.GPIO
+import serial
 import subprocess
 from time import sleep
 from timeit import default_timer as timer
 
+habSerial = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+
+captureInterval = 30
 takeoffBreakTime = 600
 
 camPi = 'rpi'
@@ -30,13 +34,32 @@ camDown = 'down'
 camUp = 'up'
 camera = picamera.PiCamera()
 
-gpio = RPi.GPIO()
+#gpio = RPi.GPIO()
 
-gpioInput = 17
+#gpioInput = 17
 
-gpio.setwarnings(False)
-gpio.setmode(gpio.BOARD)
-gpio.setup(gpioInput, gpio.IN, pull_up_down=gpio.PUD_DOWN)
+#gpio.setwarnings(False)
+#gpio.setmode(gpio.BOARD)
+#gpio.setup(gpioInput, gpio.IN, pull_up_down=gpio.PUD_DOWN)
+
+
+def serial_receive(serialData):
+    if serialData[0] == '$':
+        if serialData[1] == '0':
+            return '0'
+        elif serialData[1] == '1':
+            return '1'
+        elif serialData[1] == '2':
+            return '2'
+        elif serialData[1] == '3':
+            return '3'
+        else:
+            print 'Invalid serial command received.'
+            return '-1'
+
+
+def serial_send(serialData):
+    print 'DO STUFF AND THINGS.'
 
 
 def capture_photo(camType):
@@ -81,20 +104,62 @@ def capture_video(camType, vidLength):
         error = std_err.strip('\n')
 
 
-while not gpio.input(inputStart):
-    sleep(1)
-
-startTime = timer()
-startTimeStatic = startTime
-while gpio.input(inputStart):
-    capture_video(camDown, 60)
-    while (timer() - startTime) <= 60:
-        sleep(1)
-        capture_photo(camPi)
-        sleep(1)
-        capture_photo(camUp)
-        sleep (10)
+def takeoff_capture():
     startTime = timer()
-    if (startTime - startTimeStatic) > takeoffBreakTime:
-        break
+    startTimeStatic = startTime
+    while True:
+        habOutput = habSerial.readline()[:-2]
+        if habOutput:
+            habCommand = parse_output(habOutput)
+            print habCommand
+            if habCommand == '0':
+                break
+        capture_video(camDown, 60)
+        while (timer() - startTime) <= 60:
+            sleep(1)
+            capture_photo(camPi)
+            sleep(1)
+            capture_photo(camUp)
+            sleep (10)
+        startTime = timer()
+        if (startTime - startTimeStatic) > takeoffBreakTime:
+            break
 
+
+def peak_capture():
+    print 'Peak capture.'
+
+
+def landing_capture():
+    print 'Landing capture.'
+
+
+while True:
+    habOutput = habSerial.readline()[:-2]
+    if habOutput:
+        habCommand = parse_output(habOutput)
+        print habCommand
+        if habCommand == '0':
+            habSerial.write('$0')
+            break
+
+while True:
+    capture_photo(camPi)
+    sleep(1)
+    capture_photo(camDown)
+    sleep(1)
+    capture_photo(camUp)
+    sleep(1)
+    
+    startTime = timer()
+    while (timer() - startTime) < captureInterval:
+        habOutput = habSerial.readline()[:-2]
+        if habOutput:
+            habCommand = parse_output(habOutput)
+            print habCommand
+            if habCommand == '1':
+                takeoff_capture()
+            elif habCommand == '2':
+                peak_capture()
+            elif habCommand == '3':
+                landing_capture()
