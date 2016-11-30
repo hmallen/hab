@@ -1,19 +1,21 @@
 #!/usr/bin/env python
 
-input RPi.GPIO
+input RPi.GPIO as GPIO
 from time import sleep
 
-gpio = RPi.GPIO()
-
-gpioInputs = [17, 18]
+gpioInputs = [15, 16]
 
 gpio.setwarnings(False)
-gpio.setmode(gpio.BOARD)
-gpio.setup(gpioInputs, gpio.IN, pull_up_down=gpio.PUD_DOWN)
+gpio.setmode(GPIO.BOARD)
+gpio.setup(gpioInputs, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-while (True):
-    seventeen = gpio.input(17)
-    eighteen = gpio.input(18)
-    pinString = str(seventeen) + ' / ' + str(eighteen)
-    print pinString
-    sleep(0.5)
+try:
+    while (True):
+        fifteen = GPIO.input(15)
+        sixteen = GPIO.input(16)
+        pinString = str(seventeen) + ' / ' + str(eighteen)
+        print pinString
+        sleep(0.5)
+except KeyboardInterrupt: # If CTRL+C is pressed, exit cleanly:
+    pwm.stop() # stop PWM
+    GPIO.cleanup() # cleanup all GPIO
