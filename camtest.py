@@ -1,4 +1,4 @@
-#!/usr/env/python
+#!/usr/bin/env python
 
 # TO DO
 #
@@ -15,45 +15,80 @@
 # - Capture from down-facing webcam during takeoff phase
 # - Capture from up-facing webcam when approaching peak through ~+0:60 seconds
 #
+# Considerations:
+# - CAN take photos with picamera while recording video from webcam (AC 2.4A power supply)
+# - CANNOT record video from both webcams simultaneously (AC 2.4A power supply)
 
-from picamera import PiCamera
-from time import sleep
+import datetime
+import picamera
 import subprocess
+import sys
+from time import sleep
 
-camDown = '/dev/video0' # CHECK THAT THIS IS CORRECT
-camUp = '/dev/video1'   # CHECK THAT THIS IS CORRECT
-camera = PiCamera()
+camPi = 'rpi'
+camDown = 'down'
+camUp = 'up'
+camera = picamera.PiCamera()
 
-def capture_photo(camera):
-    if camera == 0:
-        camera.start_preview(2)
-        camera.capture('test.jpg')
-    elif camera == 1:
-        # FSWEBCAM (camDown)
-    elif camera == 2:
-        # FSWEBCAM (camUp)
 
-def capture_video(camera):
-    if camera == 0:
-        # RASPIVID
-    elif camera == 1:
-        # AVCONV (camDown)
-    elif camera == 2:
-        # AVCONV (camUp)
+def capture_photo(camType):
+    if camType == 'rpi':
+        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        filename = 'media/photos/RPI-' + timestamp + '.jpg'
+        camera.start_preview()
+        sleep(2)
+        camera.capture(filename)
+    elif camType == 'up':
+        popenString = './webcam_photo.sh 0'
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
+    elif camType == 'down':
+        popenString = './webcam_photo.sh 1'
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
 
-capture_photo()
-sleep(30)
-# DO STUFF & THINGS
 
-popen_string = 'python exchange_lorenz_tradeexecution_v2.py -s buy'
-order = subprocess.Popen([popen_string], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-std_out, std_err = order.communicate()
-status = std_out.strip('\n')
-error = std_err.strip('\n')
+def capture_video(camType, vidLength):
+    if camType == 'rpi':
+        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        #filename = 'media/videos/h264/RPI-' + timestamp + '.h264'
+        #fileconverted = 'media/videos/RPI-' + timestamp + '.mp4'
+        filename = 'media/videos/RPI-' + timestamp + '.h264'
 
-if status == '0':
-    return status
-elif status == '1':
-    return status
-else:
-    return error
+        camera.start_recording(filename)
+        camera.wait_recording(vidLength)
+        camera.stop_recording()
+
+        #popenString = './h264_convert.sh ' + filename + ' ' + fileconverted
+        #popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #std_out, std_err = popenCommand.communicate()
+        #status = std_out.strip('\n')
+        #error = std_err.strip('\n')
+    elif camType == 'up':
+        popenString = './webcam_video.sh 0' + ' ' + str(vidLength)
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
+    elif camType == 'down':
+        popenString = './webcam_video.sh 1' + ' ' + str(vidLength)
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
+
+
+capture_photo(camPi)
+capture_photo(camUp)
+capture_photo(camDown)
+capture_video(camPi, 5)
+capture_video(camUp, 5)
+capture_video(camDown, 5)
+
+print 'Finished!'
+
+sys.exit()
