@@ -18,7 +18,6 @@
 
 import datetime
 import picamera
-#import RPi.GPIO
 import serial
 import subprocess
 from time import sleep
@@ -33,14 +32,6 @@ camPi = 'rpi'
 camDown = 'down'
 camUp = 'up'
 camera = picamera.PiCamera()
-
-#gpio = RPi.GPIO()
-
-#gpioInput = 17
-
-#gpio.setwarnings(False)
-#gpio.setmode(gpio.BOARD)
-#gpio.setup(gpioInput, gpio.IN, pull_up_down=gpio.PUD_DOWN)
 
 
 def serial_receive(serialData):
@@ -105,17 +96,19 @@ def capture_video(camType, vidLength):
 
 
 def takeoff_capture():
+    # CONTINUE CAPTURING DOWN-FACING WEBCAM VIDEO UNTIL THRESHOLD ALTITUDE ACHEIVED
     startTime = timer()
     startTimeStatic = startTime
     while True:
         habOutput = habSerial.readline()[:-2]
         if habOutput:
-            habCommand = parse_output(habOutput)
+            habCommand = serial_receive(habOutput)
             print habCommand
             if habCommand == '0':
                 break
-        capture_video(camDown, 60)
-        while (timer() - startTime) <= 60:
+        capture_video(camDown, 120)
+        sleep(1)
+        while (timer() - startTime) <= 120:
             sleep(1)
             capture_photo(camPi)
             sleep(1)
@@ -127,17 +120,59 @@ def takeoff_capture():
 
 
 def peak_capture():
-    print 'Peak capture.'
+    # CONTINUE CAPTURING UP-FACING WEBCAM VIDEO UNTIL DESCENT DETECTED (?+10sec?)
+    startTime = timer()
+    startTimeStatic = startTime
+    while True:
+        habOutput = habSerial.readline()[:-2]
+        if habOutput:
+            habCommand = serial_receive(habOutput)
+            print habCommand
+            if habCommand == '0':
+                break
+        capture_video(camUp, 120)
+        sleep(1)
+        while (timer() - startTime) <= 120:
+            sleep(1)
+            capture_photo(camPi)
+            sleep(1)
+            capture_photo(camDown)
+            sleep (30)
+        startTime = timer()
+        if (startTime - startTimeStatic) > takeoffBreakTime:
+            break
 
 
 def landing_capture():
-    print 'Landing capture.'
+    # BEGIN CAPTURE OF DOWN-FACING WEBCAM VIDEO WHEN CLOSE TO GROUND AND CONTINUE UNTIL STATIONARY
+    startTime = timer()
+    startTimeStatic = startTime
+    while True:
+        habOutput = habSerial.readline()[:-2]
+        if habOutput:
+            habCommand = serial_receive(habOutput)
+            print habCommand
+            if habCommand == '0':
+                break
+        capture_video(camDown, 120)
+        sleep(1)
+        capture_video(camUp, 10)
+        sleep(1)
+        while (timer() - startTime) <= 130:
+            sleep(1)
+            capture_photo(camPi)
+            sleep(1)
+            capture_photo(camUp)
+            sleep (10)
+        startTime = timer()
+        if (startTime - startTimeStatic) > takeoffBreakTime:
+            break
 
 
 while True:
     habOutput = habSerial.readline()[:-2]
     if habOutput:
-        habCommand = parse_output(habOutput)
+        habCommand = serial_receive(habOutput)
         print habCommand
         if habCommand == '0':
             habSerial.write('$0')
@@ -155,7 +190,7 @@ while True:
     while (timer() - startTime) < captureInterval:
         habOutput = habSerial.readline()[:-2]
         if habOutput:
-            habCommand = parse_output(habOutput)
+            habCommand = serial_receive(habOutput)
             print habCommand
             if habCommand == '1':
                 takeoff_capture()
