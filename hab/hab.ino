@@ -1570,11 +1570,16 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
   }
 
   if (!debugMode) {
-    char debugString[32];
+    char debugString[64];
     char debugPrefix[] = "Received SMS message: ";
     sprintf(debugString, debugPrefix);
     strcat(debugString, smsMessage);
-    logDebug(debugString);  // MIGHT WANT TO ADD MORE INFO
+    char leftParenChar[] = " (";
+    char rightParenChar[] = ")";
+    strcat(debugString, leftParenChar);
+    strcat(debugString, smsRecNumber);
+    strcat(debugString, rightParenChar);
+    logDebug(debugString);
   }
 
   if (smsStartup) {
