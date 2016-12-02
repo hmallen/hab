@@ -129,7 +129,8 @@ const bool debugInputMode = true;
 const int debugLED = 13;
 const int debugCamPin = 44;
 const int debugModePin = 45;
-bool debugCamState, debugModeState;
+const int debugHeaterPin = 46;
+bool debugCamState, debugModeState, debugHeaterState;
 
 // Digital Pins
 const int chipSelect = SS;
@@ -246,37 +247,50 @@ void initSensors() {
   if (debugMode) Serial.print(" - DOF...");
   if (!accel.begin()) {
     if (!setupComplete) startupFailure();
-    else if (!debugMode) logDebug("No LSM303 detected.");
+    else if (!debugMode) {
+      char debugString[] = "No LSM303 detected.";
+      logDebug(debugString);
+    }
     else Serial.println("No LSM303 detected.");
   }
   if (!mag.begin()) {
     if (!setupComplete) startupFailure();
-    else if (!debugMode) logDebug("No LSM303 detected.");
+    else if (!debugMode) {
+      char debugString[] = "No LSM303 detected.";
+      logDebug(debugString);
+    }
     else Serial.println("No LSM303 detected.");
   }
   if (!gyro.begin()) {
     if (!setupComplete) startupFailure();
-    else if (!debugMode) logDebug("No L3GD20 detected.");
+    else if (!debugMode) {
+      char debugString[] = "No L3GD20 detected.";
+      logDebug(debugString);
+    }
     else Serial.println("No L3GD20 detected.");
   }
   if (!bmp.begin()) {
     if (!setupComplete) startupFailure();
-    else if (!debugMode) logDebug("No BMP180 detected.");
+    else if (!debugMode) {
+      char debugString[] = "No BMP180 detected.";
+      logDebug(debugString);
+    }
     else Serial.println("No BMP180 detected.");
   }
   if (debugMode) {
     Serial.println("success.");
-
     Serial.print(" - MS5607...");
   }
   if (ms5607.connect()) {
     if (!setupComplete) startupFailure();
-    else if (!debugMode) logDebug("No MS5607 detected.");
+    else if (!debugMode) {
+      char debugString[] = "No MS5607 detected.";
+      logDebug(debugString);
+    }
     else Serial.println("No MS5607 detected.");
   }
   if (debugMode) {
     Serial.println("success.");
-
     Serial.print(" - SHT11...");
   }
   for (int x = 0; x < 3; x++) {
@@ -296,32 +310,30 @@ void initGps() {
   int gpsPpsPulses;
 
   if (debugMode) Serial.print("Checking for GPS power...");
-  while (gpsPower == false) {
+  while (!gpsPower) {
     gpsPpsPulses = 0;
     for (unsigned long startTime = millis(); (millis() - startTime) < 1000; ) {
       gpsPpsVal = digitalRead(gpsPpsPin);
-      if (gpsPpsVal == true) gpsPpsPulses++;
+      if (gpsPpsVal) gpsPpsPulses++;
       delay(100);
     }
     if (gpsPpsPulses < 5) gpsPower = true;
   }
   if (debugMode) {
     Serial.println("confirmed.");
-
     Serial.print("Waiting for GPS fix...");
   }
-  while (gpsFix == false) {
+  while (!gpsFix) {
     gpsPpsPulses = 0;
     for (unsigned long startTime = millis(); (millis() - startTime) < 6000; ) {
       gpsPpsVal = digitalRead(gpsPpsPin);
-      if (gpsPpsVal == true) gpsPpsPulses++;
+      if (gpsPpsVal) gpsPpsPulses++;
       delay(100);
     }
     if (gpsPpsPulses >= 5) gpsFix = true;
   }
   if (debugMode) {
     Serial.println("attained.");
-
     Serial.print("Waiting for sufficient HDOP...");
   }
 
@@ -335,7 +347,6 @@ void initGps() {
     }
     if (debugMode) {
       Serial.println("attained.");
-
       Serial.print("Waiting for stable launch site coordinates...");
     }
     gpsLaunchLat = gpsLat;
@@ -368,7 +379,7 @@ void initGps() {
 
 void smsPower(bool powerState) {
   // Power on GPRS and set proper modes for operation
-  if (powerState == true) {
+  if (powerState) {
     digitalWrite(smsPowerPin, HIGH);
     delay(500);
     digitalWrite(smsPowerPin, LOW);
@@ -403,7 +414,7 @@ void smsPower(bool powerState) {
 
 void smsConfirmReady() {
   char smsMessageRaw[128];
-  while (smsReadyReceived == false) {
+  while (!smsReadyReceived) {
     if (!Serial1.available()) {
       while (!Serial1.available()) {
         delay(100);
@@ -454,6 +465,7 @@ void setup() {
 
   pinMode(debugCamPin, INPUT_PULLUP);
   pinMode(debugModePin, INPUT_PULLUP);
+  pinMode(debugHeaterPin, INPUT_PULLUP);
   pinMode(gpsPpsPin, INPUT_PULLUP);
   pinMode(programStartPin, INPUT_PULLUP);
 
@@ -491,7 +503,6 @@ void setup() {
   if (debugMode) {
     Serial.println("Complete.");
     Serial.println();
-
     Serial.print("Initializing SD card...");
   }
   if (!sd.begin(chipSelect, SPI_HALF_SPEED)) {
@@ -530,7 +541,10 @@ void setup() {
       Serial.println("System rebooted by watchdog timer or manual reset.");
       Serial.println();
     }
-    else logDebug("System rebooted by watchdog timer or manual reset.");
+    else {
+      char debugString[] = "System rebooted by watchdog timer or manual reset.";
+      logDebug(debugString);
+    }
   }
   else {
     initGps();
@@ -575,11 +589,10 @@ void setup() {
 
       if (debugMode) {
         Serial.println("complete.");
-
         Serial.print("Waiting for SMS ready message...");
       }
       smsConfirmReady();
-      Serial.println("received.");
+      if (debugMode) Serial.println("received.");
     }
 
     while (true) {
@@ -641,16 +654,16 @@ void setup() {
     }
     while (true) {
       if (Serial.available()) {
-        String cameraInput;
+        char cameraInput[6];
+        int x = 0;
         while (Serial.available()) {
           char c = Serial.read();
-          cameraInput += c;
+          cameraInput[x] = c;
+          x++;
           delay(5);
         }
-        if (cameraInput == "$0") {
-          Serial.println("$1");
-          break;
-        }
+        cameraInput[x] = '\0';
+        if (cameraInput[0] == '$' && cameraInput[1] == '0') break;
       }
     }
   }
@@ -702,7 +715,10 @@ void loop() {
         Serial.print("Time(DOF): ");
         Serial.println((millis() - startTimeDof));
       }
-      else logData("dof");
+      else {
+        char dataType[] = "dof";
+        logData(dataType);
+      }
       delay(DOFDATAINTERVAL);
       dofLoopCount++;
 
@@ -812,8 +828,7 @@ void loop() {
     if (debugMode) Serial.print("Aux Loop #: ");
     Serial.println(auxLoopCount);
 
-    String auxLoopCountString = String(auxLoopCount);
-    auxLoopCountString.toCharArray(auxLoopCountChar, 6);
+    sprintf(auxLoopCountChar, "%i", auxLoopCount);
     auxLoopCount++;
 
     if (debugMode) {
@@ -822,7 +837,10 @@ void loop() {
       Serial.println((millis() - loopStart));
       Serial.println();
     }
-    else logData("aux");
+    else {
+      char dataType[] = "aux";
+      logData(dataType);
+    }
 
     if (digitalRead(buzzerRelay) == HIGH && (millis() - buzzerStart) >= BUZZERACTIVETIME) digitalWrite(buzzerRelay, LOW);
 
@@ -862,9 +880,12 @@ void loop() {
     Serial.println(millis() - loopStart);
     Serial.println();
   }
-  else logData("gps");
+  else {
+    char dataType[] = "gps";
+    logData(dataType);
+  }
 
-  if (smsMarkFlush == true) {
+  if (smsMarkFlush) {
     if (debugMode) Serial.print("Flushing GPRS buffer...");
     smsFlush();
     if (debugMode) {
@@ -986,7 +1007,7 @@ bool readGps() {
     gpsSpeed = gps.speed.mps();
     gpsCourse = gps.course.deg();
 
-    if (gpsTimeSet == false) {
+    if (!gpsTimeSet) {
       unsigned long age;
       uint8_t Month = gps.date.month();
       uint8_t Day = gps.date.day();
@@ -1082,7 +1103,11 @@ void checkChange() {
   float dofAltChange = dofAltLast - dofAlt;
   float ms5607PressChange = ms5607Press - ms5607PressLast;
 
-  if (dofTemp <= HEATERTRIGGERTEMP && heaterStatus == false) {
+  debugCamState = digitalRead(debugCamPin);
+  debugModeState = digitalRead(debugModePin);
+  debugHeaterState = digitalRead(debugHeaterPin);
+
+  if (dofTemp <= HEATERTRIGGERTEMP && !heaterStatus || !debugHeaterState && !heaterStatus) {
     digitalWrite(heaterRelay, HIGH);
     heaterStatus = true;
     char debugChar[64];
@@ -1093,7 +1118,7 @@ void checkChange() {
     strcat(debugChar, dofTempChar);
     logDebug(debugChar);
   }
-  else if (dofTemp > HEATERTRIGGERTEMP && heaterStatus == true) {
+  else if (dofTemp > HEATERTRIGGERTEMP && heaterStatus || !debugHeaterState && heaterStatus) {
     digitalWrite(heaterRelay, LOW);
     heaterStatus = false;
     char debugChar[64];
@@ -1106,18 +1131,18 @@ void checkChange() {
   }
 
   if (!descentPhase) {
-    if (launchCapture == false) {
+    if (!launchCapture) {
       Serial.println("$1");
       launchCapture = true;
       resetHandler = true;
     }
-    else if (launchCapture == true && resetHandler == true) {
+    else if (launchCapture && resetHandler) {
       if ((dofAlt - dofAltOffset) > LAUNCHCAPTURETHRESHOLD) {
         Serial.println("$0");
         resetHandler = false;
       }
     }
-    else if (launchCapture == true && resetHandler == false && peakCapture == false) {
+    else if (launchCapture && !resetHandler && !peakCapture) {
       //if (dofPressure < PEAKCAPTURETHRESHOLD) {
       bool debugCamState = digitalRead(debugCamPin);
       if (!debugCamState) debugBlink();
@@ -1181,7 +1206,7 @@ void checkChange() {
   }
 
   else if (!landingPhase) {
-    if (landingCapture == false) {
+    if (!landingCapture) {
       debugCamState = digitalRead(debugCamPin);
       if (!debugCamState) debugBlink();
       if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugCamState) {
@@ -1252,7 +1277,7 @@ void checkChange() {
   ms5607PressLast = ms5607Press;
 }
 
-void logData(String logType) {
+void logData(char * logType) {
   // GET RID OF SD.ERRORHALT() TO PREVENT PROGRAM FROM STALLING
   if (logType == "dof") {
     if (!logFile.open(dof_log_file, O_RDWR | O_CREAT | O_AT_END)) {
@@ -1382,7 +1407,8 @@ void logData(String logType) {
   else {
     if (debugMode) Serial.println("Unrecognized log type. Failed to write to SD.");
     else {
-      logDebug("Unrecognized log type. Failed to write to SD.");
+      char debugString[] = "Unrecognized log type. Failed to write to SD.";
+      logDebug(debugString);
     }
   }
 
@@ -1390,7 +1416,7 @@ void logData(String logType) {
   logFile.close();
 }
 
-void logDebug(String dataString) {
+void logDebug(char * dataString) {
   // GET RID OF SD.ERRORHALT() TO PREVENT PROGRAM FROM STALLING
   if (!logFile.open(debug_log_file, O_RDWR | O_CREAT | O_AT_END)) {
     if (debugMode) sd.errorHalt("Opening debug log for write failed.");
@@ -1524,7 +1550,10 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
   int x = 0;
   for (numIndex; ; numIndex++) {
     char c = smsMessageRaw[numIndex];
-    if (c == '"') break;
+    if (c == '"') {
+      smsRecNumber[x] = '\0';
+      break;
+    }
     smsRecNumber[x] = c;
     x++;
   }
@@ -1532,19 +1561,28 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
   x = 0;
   for (smsIndex; ; smsIndex++) {
     char c = smsMessageRaw[smsIndex];
-    if (c == '\n' || c == '\r') break;
+    if (c == '\n' || c == '\r') {
+      smsMessage[x] = '\0';
+      break;
+    }
     smsMessage[x] = c;
     x++;
   }
 
-  //if (!debugMode) logDebug("Received SMS message: " + String(smsMessage));  // Add more info [DONT USE YET...BREAKS PROGRAM]
+  if (!debugMode) {
+    char debugString[32];
+    char debugPrefix[] = "Received SMS message: ";
+    sprintf(debugString, debugPrefix);
+    strcat(debugString, smsMessage);
+    logDebug(debugString);  // MIGHT WANT TO ADD MORE INFO
+  }
 
-  if (smsStartup == true) {
+  if (smsStartup) {
     if (smsMessage == "Ready") smsReadyReceived = true;
     else startupFailure();
   }
 
-  else if (execCommand == true) {
+  else if (execCommand) {
     int smsCommand = 0;
 
     //if (smsMessage.length() == 1) smsCommand = smsMessage.toInt();
@@ -1699,6 +1737,8 @@ void rttyProcessTx() {
   char commaChar[] = ",";
 
   sprintf(rttyTxString, callsignHeader);
+  strcat(rttyTxString, commaChar);
+  strcat(rttyTxString, auxLoopCountChar);
   strcat(rttyTxString, commaChar);
   dtostrf(gpsLat, 2, 6, gpsLatChar);
   strcat(rttyTxString, gpsLatChar);
