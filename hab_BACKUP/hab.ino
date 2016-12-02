@@ -1,83 +1,80 @@
 /*
    High-Altitude Balloon
 
-  Features:
-  - Sensor data acquisition
-  - Relay control
-  - SD data logging
-  - SSB RTTY transmission of position information at 434.250MHz
-  - SMS notifications
+   Features:
+   - Sensor data acquisition
+   - Relay control
+   - SD data logging
+   - SSB RTTY transmission of position information at 434.250MHz
+   - SMS notifications
 
-  Sensors:
-  - GPS
-  - Gas Sensors
-  - Temp/Humidity (SHT11)
-  - Light
-  - Adafruit 1604 (DOF)
-  -- Accelerometer/Gyroscope/Magnetometer
-  -- Barometer (Altitude/Temperature) [BMP180]
-  - MS5607 Barometer/Altimeter
+   Sensors:
+   - GPS
+   - Gas Sensors
+   - Temp/Humidity (SHT11)
+   - Light
+   - Adafruit 1604 (DOF)
+   -- Accelerometer/Gyroscope/Magnetometer
+   -- Barometer (Altitude/Temperature) [BMP180]
+   - MS5607 Barometer/Altimeter
 
-  Relay Control:
-  #1 --> Pin 7 (Gas sensors)
-  #2 --> Pin 6 (Internal payload heater)
-  #3 --> Pin 5
-  #4 --> Pin 4
+   Relay Control:
+   #1 --> Pin 7 (Gas sensors)
+   #2 --> Pin 6 (Internal payload heater)
+   #3 --> Pin 5
+   #4 --> Pin 4
 
-  Gas Sensors:
-  MQ-2 --> A7
-  MQ-3 --> A8
-  MQ-4 --> A9
-  MQ-5 --> A10
-  MQ-6 --> A11
-  MQ-7 --> A12
-  MQ-8 --> A13
-  MQ-9 --> A14
-  MQ135 --> A15
+   Gas Sensors:
+   MQ-2 --> A7
+   MQ-3 --> A8
+   MQ-4 --> A9
+   MQ-5 --> A10
+   MQ-6 --> A11
+   MQ-7 --> A12
+   MQ-8 --> A13
+   MQ-9 --> A14
+   MQ135 --> A15
 
-  EEPROM Values:
-  0 --> Setup complete
-  1 --> Descent phase
-  2 --> Landing phase
+   EEPROM Values:
+   0 --> Setup complete
+   1 --> Descent phase
+   2 --> Landing phase
 
-  TO DO:
-  - Create test interrupt functions for pins 44-47 (Trigger fake alt/checkChange()/etc values)
-  -- TEST INPUT VALUES FOR PIN (i.e. INPUT_PULLUP STATE @ 1/0)
-  - TEST ARDUINO-->RPI SERIAL COMMUNICATION TRIGGERS
-  - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
-  - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
-  - Add RTTY test TX before SMS confirmation?
-  - Add MS5607 altitude????
-  - Stop reading gas sensors after descent?
-  - Make sure calls for buzzer use new variable ("buzzerRelay")
-  - Add exception for sensor initialization if setupComplete is true??
-  - Change "ada..." to "dof" for consistency
-  - Add servo/picture taking function
-  - Confirm that boolean argument in smsPower function actually necessary
-  - Test if SMS stores in buffer when no signal and sends when reconnected
-  - Add check to confirm GPRS is powered on (Need to find suitable function)
-  -- Also check if similar function to indicate network connectivity
-  - Gather sender number and log incoming/outgoing SMS messages to SD card
-  - Consider setting sampling rate based on theoretical ascent rate
-  - Cut-down
-  - Change global variables to functions returning pointer arrays
+   TO DO:
+   - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
+   - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
+   - Add RTTY test TX before SMS confirmation?
+   - Add MS5607 altitude????
+   - Stop reading gas sensors after descent?
+   - Make sure calls for buzzer use new variable ("buzzerRelay")
+   - Add exception for sensor initialization if setupComplete is true??
+   - Change "ada..." to "dof" for consistency
+   - Add servo/picture taking function
+   - Confirm that boolean argument in smsPower function actually necessary
+   - Test if SMS stores in buffer when no signal and sends when reconnected
+   - Add check to confirm GPRS is powered on (Need to find suitable function)
+   -- Also check if similar function to indicate network connectivity
+   - Gather sender number and log incoming/outgoing SMS messages to SD card
+   - Consider setting sampling rate based on theoretical ascent rate
+   - Cut-down
+   - Change global variables to functions returning pointer arrays
 
-  CONSIDERATIONS:
-  - Setting SD to SPI_FULL_SPEED
-  - Inclusion of additional startup SMS output (gas sensor warmup, etc.)
-  - Safer to power GPRS before other things to ensure network connectivity?
-  - Check if system resets if on external power and serial (computer debugging) is unplugged
-  - Gas sensor calibration
-  - Possible to use SMS command to reset system or place into "recovery" mode?
-  - Create LED flashes to indicate specific startup failure
-  - Check if break in DOF logging for other data affects reconstruction
-  -- Create program (?Python?) to extrapolate and fill in gaps ["smoothing function"]
+   CONSIDERATIONS:
+   - Setting SD to SPI_FULL_SPEED
+   - Inclusion of additional startup SMS output (gas sensor warmup, etc.)
+   - Safer to power GPRS before other things to ensure network connectivity?
+   - Check if system resets if on external power and serial (computer debugging) is unplugged
+   - Gas sensor calibration
+   - Possible to use SMS command to reset system or place into "recovery" mode?
+   - Create LED flashes to indicate specific startup failure
+   - Check if break in DOF logging for other data affects reconstruction
+   -- Create program (?Python?) to extrapolate and fill in gaps ["smoothing function"]
 
-  LESSONS LEARNED:
-  - I2C device failures (first observed w/ MS5607 CRC4 check fail) likely due to poor jumper/breadboard wiring
-  - Debug logging of SMS data currently breaks SMS functions if executed immediately prior
-  - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
-  - ??Must allow to pass through first loop before sending SMS command or it will be flushed??
+   LESSONS LEARNED:
+   - I2C device failures (first observed w/ MS5607 CRC4 check fail) likely due to poor jumper/breadboard wiring
+   - Debug logging of SMS data currently breaks SMS functions if executed immediately prior
+   - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
+   - ??Must allow to pass through first loop before sending SMS command or it will be flushed??
 */
 
 // Libraries
@@ -110,9 +107,6 @@
 #define GPSCHANGETHRESHOLD 5.0 // Negative altitude change (m) from GPS to signify real altitude decrease
 #define HEATERTRIGGERTEMP 0.0  // Temperature (C) below which internal payload heater activated
 #define BUZZERACTIVETIME 30000  // Time (ms) that buzzer remains active after triggered by SMS command
-#define LAUNCHCAPTURETHRESHOLD 1000.0
-#define PEAKCAPTURETHRESHOLD 500.0  // NEED TO CHANGE!!!!
-#define LANDINGCAPTURETHRESHOLD 3000.0
 
 //#define DAYLIGHTSAVINGS
 
@@ -122,14 +116,8 @@ const int gpsTimeOffset = -4;
 const int gpsTimeOffset = -5;
 #endif
 
-// DEBUG
 const bool debugMode = false;
 const bool debugSmsOff = false;
-const bool debugInputMode = true;
-const int debugLED = 13;
-const int debugCamPin = 44;
-const int debugModePin = 45;
-bool debugCamState, debugModeState;
 
 // Digital Pins
 const int chipSelect = SS;
@@ -152,9 +140,7 @@ const int programStartLED = 29; // Multi-color LED flat-side input [Red]
 // Analog Pins
 const int lightPin = A0;
 //const int gasPins[] = {A7, A8, A9, A10, A11, A12, A13, A14, A15};
-const int gasPins[] = {
-  A8, A9, A10, A11, A12, A13
-};
+const int gasPins[] = {A8, A9, A10, A11, A12, A13};
 
 // Constants
 const char dof_log_file[] = "dof_log.txt";
@@ -169,38 +155,28 @@ bool gpsTimeSet = false;
 bool smsReadyReceived = false;
 bool smsFirstFlush = false;
 bool smsMarkFlush = false;
-char smsCommandText[6];
+String smsCommandText = "";
 bool gpsFix = false;
 float gpsLaunchLat, gpsLaunchLng;
 float gpsLat, gpsLng, gpsAlt, gpsSpeed;
 uint32_t gpsDate, gpsTime, gpsSats, gpsCourse;
 float gpsDistAway, gpsCourseTo;
-//String gpsCourseToText;
+String gpsCourseToText;
 int32_t gpsHdop;
 float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;  // Can this be a const float??
 float accelX, accelY, accelZ;
 float gyroX, gyroY, gyroZ;
 float magX, magY, magZ;
 float dofRoll, dofPitch, dofHeading;
-float dofPressure, dofTemp, dofAlt, dofAltOffset;
+float dofPressure, dofTemp, dofAlt;
 float ms5607Temp, ms5607Press;
 //float gasValues[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-float gasValues[] = {
-  0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-};
+float gasValues[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 //float gasValuesLast[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-float gasValuesLast[] = {
-  0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-};
+float gasValuesLast[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float shtTemp, shtHumidity;
 float lightVal;
 unsigned long buzzerStart;
-
-// RPi Camera Triggers
-bool launchCapture = false;
-bool peakCapture = false;
-bool landingCapture = false;
-bool resetHandler = false;
 
 // Old values to process with checkChange() function
 float gpsLatLast, gpsLngLast, gpsAltLast, ms5607PressLast, dofAltLast;
@@ -217,7 +193,6 @@ bool landingPhase = false;  // EEPROM #2
 int loopCount = 1;
 unsigned long dofLoopCount = 1;
 unsigned long auxLoopCount = 1;
-char auxLoopCountChar[6];
 int gpsLoopCount = 1;
 
 // Initializers
@@ -232,7 +207,6 @@ MS5xxx ms5607(&Wire);
 SHT1x sht(shtData, shtClock);
 TinyGPSPlus gps;
 
-// Data validation variables
 bool dofValid, ms5607Valid, gpsValid, gasValid, shtValid, lightValid;
 int ada1604Failures = 0;
 int gpsFailures = 0;
@@ -356,8 +330,7 @@ void initGps() {
 
     if (debugMode) {
       Serial.print("Launch Coordinates: ");
-      Serial.print(gpsLaunchLat);
-      Serial.print(", ");
+      Serial.print(gpsLaunchLat); Serial.print(", ");
       Serial.println(gpsLaunchLng);
       Serial.println();
     }
@@ -402,7 +375,7 @@ void smsPower(bool powerState) {
 }
 
 void smsConfirmReady() {
-  char smsMessageRaw[128];
+  String smsMessageRaw = "";
   while (smsReadyReceived == false) {
     if (!Serial1.available()) {
       while (!Serial1.available()) {
@@ -413,14 +386,11 @@ void smsConfirmReady() {
       }
     }
     if (Serial1.available()) {
-      int x = 0;
       while (Serial1.available()) {
         char c = Serial1.read();
-        smsMessageRaw[x] = c;
-        x++;
-        delay(5);
+        smsMessageRaw += c;
+        delay(10);
       }
-      smsMessageRaw[x] = '\0';
       smsHandler(smsMessageRaw, false, true);
     }
   }
@@ -428,36 +398,21 @@ void smsConfirmReady() {
 
 void setup() {
   pinMode(chipSelect, OUTPUT);
-  pinMode(gasRelay, OUTPUT);
-  digitalWrite(gasRelay, HIGH);  // Gas sensors
-  pinMode(heaterRelay, OUTPUT);
-  digitalWrite(heaterRelay, LOW); // Payload heater
-  pinMode(buzzerRelay, OUTPUT);
-  digitalWrite(buzzerRelay, LOW);
-  pinMode(relayPin4, OUTPUT);
-  digitalWrite(relayPin4, LOW);
+  pinMode(gasRelay, OUTPUT); digitalWrite(gasRelay, HIGH);  // Gas sensors
+  pinMode(heaterRelay, OUTPUT); digitalWrite(heaterRelay, LOW); // Payload heater
+  pinMode(buzzerRelay, OUTPUT); digitalWrite(buzzerRelay, LOW);
+  pinMode(relayPin4, OUTPUT); digitalWrite(relayPin4, LOW);
   pinMode(rttyTxPin, OUTPUT);
-  pinMode(smsPowerPin, OUTPUT);
-  digitalWrite(smsPowerPin, LOW);
-  pinMode(gpsReadyLED, OUTPUT);
-  digitalWrite(gpsReadyLED, LOW);
-  pinMode(programStartLED, OUTPUT);
-  digitalWrite(programStartLED, LOW);
-  pinMode(programReadyPin, OUTPUT);
-  digitalWrite(programReadyPin, LOW);
-  pinMode(heartbeatOutputPin, OUTPUT);
-  digitalWrite(heartbeatOutputPin, LOW);
-  pinMode(buzzerRelay, OUTPUT);
-  digitalWrite(buzzerRelay, LOW);
-  pinMode(debugLED, OUTPUT);
-  pinMode(debugLED, HIGH);
-
-  pinMode(debugCamPin, INPUT_PULLUP);
-  pinMode(debugModePin, INPUT_PULLUP);
+  pinMode(smsPowerPin, OUTPUT); digitalWrite(smsPowerPin, LOW);
+  pinMode(gpsReadyLED, OUTPUT); digitalWrite(gpsReadyLED, LOW);
+  pinMode(programStartLED, OUTPUT); digitalWrite(programStartLED, LOW);
+  pinMode(programReadyPin, OUTPUT); digitalWrite(programReadyPin, LOW);
+  pinMode(heartbeatOutputPin, OUTPUT); digitalWrite(heartbeatOutputPin, LOW);
+  pinMode(buzzerRelay, OUTPUT); digitalWrite(buzzerRelay, LOW);
   pinMode(gpsPpsPin, INPUT_PULLUP);
   pinMode(programStartPin, INPUT_PULLUP);
 
-  Serial.begin(115200); // Python serial communication & Debug output
+  Serial.begin(9600); // Debug output
   Serial1.begin(19200); // GPRS communication
   Serial2.begin(9600);  // GPS communication
 
@@ -484,32 +439,6 @@ void setup() {
       Serial.println("complete.");
       Serial.println();
     }
-  }
-
-  if (debugMode) Serial.println("Initializing sensors:");
-  initSensors();
-  if (debugMode) {
-    Serial.println("Complete.");
-    Serial.println();
-
-    Serial.print("Initializing SD card...");
-  }
-  if (!sd.begin(chipSelect, SPI_HALF_SPEED)) {
-    if (!setupComplete) startupFailure();
-    else {
-      if (debugMode) {
-        for (int x = 0; x < 10; x++) {
-          digitalWrite(programStartLED, HIGH);
-          delay(250);
-          digitalWrite(programStartLED, LOW);
-          delay(250);
-        }
-      }
-    }
-  }
-  if (debugMode) {
-    Serial.println("complete.");
-    Serial.println();
   }
 
   setupComplete = EEPROM.read(0);
@@ -556,9 +485,7 @@ void setup() {
         Serial.print("Sending SMS confirmation request...");
         Serial.flush();
       }
-      Serial1.print("AT + CMGS = \"");
-      Serial1.print(smsTargetNum);
-      Serial1.println("\"");
+      Serial1.print("AT + CMGS = \""); Serial1.print(smsTargetNum); Serial1.println("\"");
       delay(100);
       Serial1.println("Reply with \"Ready\" to continue.");
       delay(100);
@@ -581,20 +508,6 @@ void setup() {
       smsConfirmReady();
       Serial.println("received.");
     }
-
-    while (true) {
-      if (debugMode) Serial.print("Baselining launch site altitude for comparison...");
-      float altTotal = 0;
-      for (int x = 0; x < 5; x++) {
-        readAda1604();
-        altTotal += dofAlt;
-        delay(1000);
-      }
-      dofAltOffset = altTotal / 5;
-      readAda1604();
-      if (abs(dofAlt - dofAltOffset) < 5.0) break;
-    }
-    if (debugMode) Serial.println("complete.");
 
     //smsPower(false);
 
@@ -623,6 +536,32 @@ void setup() {
     }
   }
 
+  if (debugMode) Serial.println("Initializing sensors:");
+  initSensors();
+  if (debugMode) {
+    Serial.println("Complete.");
+    Serial.println();
+
+    Serial.print("Initializing SD card...");
+  }
+  if (!sd.begin(chipSelect, SPI_HALF_SPEED)) {
+    if (!setupComplete) startupFailure();
+    else {
+      if (debugMode) {
+        for (int x = 0; x < 10; x++) {
+          digitalWrite(programStartLED, HIGH);
+          delay(250);
+          digitalWrite(programStartLED, LOW);
+          delay(250);
+        }
+      }
+    }
+  }
+  if (debugMode) {
+    Serial.println("complete.");
+    Serial.println();
+  }
+
   if (digitalRead(programStartPin) == LOW) {
     if (debugMode) Serial.print("Toggle start switch to continue...");
     while (digitalRead(programStartPin) == LOW) {
@@ -631,32 +570,13 @@ void setup() {
       digitalWrite(programStartLED, LOW);
       delay(500);
     }
-  }
-  if (!debugMode) {
-    Serial.println("$0");
-    if (!Serial.available()) {
-      while (!Serial.available()) {
-        ;
-      }
-    }
-    while (true) {
-      if (Serial.available()) {
-        String cameraInput;
-        while (Serial.available()) {
-          char c = Serial.read();
-          cameraInput += c;
-          delay(5);
-        }
-        if (cameraInput == "$0") {
-          Serial.println("$1");
-          break;
-        }
-      }
+    if (debugMode) {
+      Serial.println("starting program.");
+      Serial.println();
     }
   }
-  else {
-    Serial.println("starting program.");
-    Serial.println();
+
+  if (debugMode) {
     Serial.println(F("-----------------"));
     Serial.println(F("---- PROGRAM ----"));
     Serial.println(F("-----------------"));
@@ -670,8 +590,7 @@ void setup() {
 
 void loop() {
   if (debugMode) {
-    Serial.print("Loop #: ");
-    Serial.println(loopCount);
+    Serial.print("Loop #: "); Serial.println(loopCount);
     Serial.println();
   }
   unsigned long loopStart = millis();
@@ -685,19 +604,11 @@ void loop() {
           Serial.print("Failed to read DOF. Count=");
           Serial.println(ada1604Failures);
         }
-        else {
-          char debugChar[64];
-          char dofFailuresChar[6];
-          char debugPrefix[] = "Failed to read DOF. Count=";
-          sprintf(debugChar, debugPrefix);
-          sprintf(dofFailuresChar, "%i", ada1604Failures);
-          strcat(debugChar, dofFailuresChar);
-          logDebug(debugChar);
-        }
+        else logDebug("Failed to read DOF. Count=" + String(ada1604Failures));
       }
+      Serial.print("DOF Loop #: "); Serial.println(dofLoopCount);
+
       if (debugMode) {
-        Serial.print("DOF Loop #: ");
-        Serial.println(dofLoopCount);
         debugDofPrint();
         Serial.print("Time(DOF): ");
         Serial.println((millis() - startTimeDof));
@@ -710,8 +621,7 @@ void loop() {
     }
     if (debugMode) {
       Serial.println();
-      Serial.print("Time(Aux-START): ");
-      Serial.println((millis() - loopStart));
+      Serial.print("Time(Aux-START): "); Serial.println((millis() - loopStart));
     }
 
     ms5607Valid = readMS5607();
@@ -721,15 +631,7 @@ void loop() {
         Serial.print("Failed to read MS5607. Count=");
         Serial.println(ms5607Failures);
       }
-      else {
-        char debugChar[64];
-        char ms5607FailuresChar[6];
-        char debugPrefix[] = "Failed to read MS5607. Count=";
-        sprintf(debugChar, debugPrefix);
-        sprintf(ms5607FailuresChar, "%i", ms5607Failures);
-        strcat(debugChar, ms5607FailuresChar);
-        logDebug(debugChar);
-      }
+      else logDebug("Failed to read MS5607. Count=" + String(ms5607Failures));
       for (int x = 0; x < 5; x++) {
         if (readMS5607()) break;
         else {
@@ -738,15 +640,7 @@ void loop() {
             Serial.print("Failed to read MS5607. Count=");
             Serial.println(ms5607Failures);
           }
-          else {
-            char debugChar[64];
-            char ms5607FailuresChar[6];
-            char debugPrefix[] = "Failed to read MS5607. Count=";
-            sprintf(debugChar, debugPrefix);
-            sprintf(ms5607FailuresChar, "%i", ms5607Failures);
-            strcat(debugChar, ms5607FailuresChar);
-            logDebug(debugChar);
-          }
+          else logDebug("Failed to read MS5607. Count=" + String(ms5607Failures));
           ms5607Temp = 0.0;
           ms5607Press = 0.0;
         }
@@ -762,15 +656,7 @@ void loop() {
           Serial.print("Failed to read gas sensors. Count=");
           Serial.println(gasFailures);
         }
-        else {
-          char debugChar[64];
-          char gasFailuresChar[6];
-          char debugPrefix[] = "Failed to read gas sensors. Count=";
-          sprintf(debugChar, debugPrefix);
-          sprintf(gasFailuresChar, "%i", gasFailures);
-          strcat(debugChar, gasFailuresChar);
-          logDebug(debugChar);
-        }
+        else logDebug("Failed to read gas sensors. Count=" + String(gasFailures));
       }
     }
 
@@ -781,15 +667,7 @@ void loop() {
         Serial.print("Failed to read SHT11. Count=");
         Serial.println(shtFailures);
       }
-      else {
-        char debugChar[64];
-        char shtFailuresChar[6];
-        char debugPrefix[] = "Failed to read SHT11. Count=";
-        sprintf(debugChar, debugPrefix);
-        sprintf(shtFailuresChar, "%i", shtFailures);
-        strcat(debugChar, shtFailuresChar);
-        logDebug(debugChar);
-      }
+      else logDebug("Failed to read SHT11. Count=" + String(shtFailures));
     }
 
     lightValid = readLight();
@@ -799,21 +677,9 @@ void loop() {
         Serial.print("Failed to read light sensor. Count=");
         Serial.println(lightFailures);
       }
-      else {
-        char debugChar[64];
-        char lightFailuresChar[6];
-        char debugPrefix[] = "Failed to read light sensor. Count=";
-        sprintf(debugChar, debugPrefix);
-        sprintf(lightFailuresChar, "%i", lightFailures);
-        strcat(debugChar, lightFailuresChar);
-        logDebug(debugChar);
-      }
+      else logDebug("Failed to read light sensor. Count=" + String(lightFailures));
     }
-    if (debugMode) Serial.print("Aux Loop #: ");
-    Serial.println(auxLoopCount);
-
-    String auxLoopCountString = String(auxLoopCount);
-    auxLoopCountString.toCharArray(auxLoopCountChar, 6);
+    Serial.print("Aux Loop #: "); Serial.println(auxLoopCount);
     auxLoopCount++;
 
     if (debugMode) {
@@ -840,20 +706,11 @@ void loop() {
       Serial.print("Failed to read GPS. Count=");
       Serial.println(gpsFailures);
     }
-    else {
-      char debugChar[64];
-      char gpsFailuresChar[6];
-      char debugPrefix[] = "Failed to read GPS. Count=";
-      sprintf(debugChar, debugPrefix);
-      sprintf(gpsFailuresChar, "%i", gpsFailures);
-      strcat(debugChar, gpsFailuresChar);
-      logDebug(debugChar);
-    }
+    else logDebug("Failed to read GPS. Count=" + String(gpsFailures));
     gpsLat = gpsLatLast;
     gpsLng = gpsLngLast;
   }
-  if (debugMode) Serial.print("GPS Loop #: ");
-  Serial.println(gpsLoopCount);
+  Serial.print("GPS Loop #: "); Serial.println(gpsLoopCount);
   gpsLoopCount++;
 
   if (debugMode) {
@@ -876,13 +733,11 @@ void loop() {
 
   if (Serial1.available()) {
     if (debugMode) Serial.println("Incoming GPRS serial data.");
-    char smsMessageRaw[128];
-    int x = 0;
+    String smsMessageRaw = "";
     while (Serial1.available()) {
       char c = Serial1.read();
-      smsMessageRaw[x] = c;
-      x++;
-      delay(5);
+      smsMessageRaw += c;
+      delay(10);
     }
     if (debugMode) Serial.print("Processing GPRS data...");
     smsHandler(smsMessageRaw, true, false);
@@ -909,12 +764,9 @@ void loop() {
   else {
     checkChange();
     if (debugMode) {
-      Serial.print("GPS Changes: ");
-      Serial.println(gpsChanges);
-      Serial.print("DOF Changes: ");
-      Serial.println(dofChanges);
-      Serial.print("MS5607 Changes: ");
-      Serial.println(ms5607Changes);
+      Serial.print("GPS Changes: "); Serial.println(gpsChanges);
+      Serial.print("DOF Changes: "); Serial.println(dofChanges);
+      Serial.print("MS5607 Changes: "); Serial.println(ms5607Changes);
       Serial.println();
     }
   }
@@ -995,21 +847,21 @@ bool readGps() {
       uint8_t Second = gps.time.second();
 
       uint16_t yearRaw = gps.date.year();
-      char yearCharRaw[6];
-      char yearChar[3];
+      String yearStringRaw = String(yearRaw);
+      int yearLength = yearStringRaw.length();
 
-      sprintf(yearCharRaw, "%i", yearRaw);
+      if (yearLength == 4 && age < 500) {
+        String yearString;
+        for (int x = 2; x < 4; x++) {
+          char c = yearStringRaw.charAt(x);
+          yearString += c;
+        }
+        int Year = yearString.toInt();
 
-      for (int x = 2; x < 4; x++) {
-        char c = yearCharRaw[x];
-        yearChar[x - 2] = c;
+        setTime(Hour, Minute, Second, Day, Month, Year);
+        adjustTime(gpsTimeOffset * SECS_PER_HOUR);
+        gpsTimeSet = true;
       }
-      yearChar[2] = '\0';
-      uint16_t Year = atoi(yearChar);
-
-      setTime(Hour, Minute, Second, Day, Month, Year);
-      adjustTime(gpsTimeOffset * SECS_PER_HOUR);
-      gpsTimeSet = true;
     }
 
     gpsDistAway =
@@ -1025,7 +877,7 @@ bool readGps() {
         gpsLaunchLat,
         gpsLaunchLng);
 
-    //gpsCourseToText = String(gps.cardinal(gpsCourseTo));
+    gpsCourseToText = String(gps.cardinal(gpsCourseTo));
 
     return true;
   }
@@ -1085,112 +937,60 @@ void checkChange() {
   if (dofTemp <= HEATERTRIGGERTEMP && heaterStatus == false) {
     digitalWrite(heaterRelay, HIGH);
     heaterStatus = true;
-    char debugChar[64];
-    char debugPrefix[] = "Heater activated @ ";
-    char dofTempChar[6];
-    dtostrf(dofTemp, 2, 2, dofTempChar);
-    sprintf(debugChar, debugPrefix);
-    strcat(debugChar, dofTempChar);
-    logDebug(debugChar);
+    logDebug("Heater activated @ " + String(dofTemp));
   }
   else if (dofTemp > HEATERTRIGGERTEMP && heaterStatus == true) {
     digitalWrite(heaterRelay, LOW);
     heaterStatus = false;
-    char debugChar[64];
-    char debugPrefix[] = "Heater inactivated @ ";
-    char dofTempChar[6];
-    dtostrf(dofTemp, 2, 2, dofTempChar);
-    sprintf(debugChar, debugPrefix);
-    strcat(debugChar, dofTempChar);
-    logDebug(debugChar);
+    logDebug("Heater inactivated @ " + String(dofTemp));
   }
 
   if (!descentPhase) {
-    if (launchCapture == false) {
-      Serial.println("$1");
-      launchCapture = true;
-      resetHandler = true;
-    }
-    else if (launchCapture == true && resetHandler == true) {
-      if ((dofAlt - dofAltOffset) > LAUNCHCAPTURETHRESHOLD) {
-        Serial.println("$0");
-        resetHandler = false;
+    if (gpsAltChange <= 0.0) gpsChanges = 0;
+    else if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges++;
+
+    if (dofAltChange <= 0.0) dofChanges = 0;
+    else if (dofAltChange > BAROALTCHANGETHRESHOLD) dofChanges++;
+
+    if (ms5607PressChange <= 0.0) ms5607Changes = 0;
+    else if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) {
+      ms5607Changes++;
+      if (debugMode) {
+        Serial.print(ms5607Press);
+        Serial.print(" - ");
+        Serial.print(ms5607PressLast);
+        Serial.print(" = ");
+        Serial.println(ms5607PressChange);
       }
     }
-    else if (launchCapture == true && resetHandler == false && peakCapture == false) {
-      //if (dofPressure < PEAKCAPTURETHRESHOLD) {
-      bool debugCamState = digitalRead(debugCamPin);
-      if (!debugCamState) debugBlink();
-      if (dofPressure < PEAKCAPTURETHRESHOLD || !debugCamState) {
-        Serial.println("$2");
-        peakCapture = true;
-        resetHandler = true;
+
+    if (gpsChanges >= 10) descentPhase = true;
+    else if (dofChanges >= 10) descentPhase = true;
+    else if (gpsChanges >= 5 && dofChanges >= 5) descentPhase = true;
+    else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
+
+    if (descentPhase) {
+      EEPROM.write(1, 1);
+      if (debugMode) {
+        Serial.println();
+        Serial.println("Descent phase triggered.");
+        Serial.println();
       }
+
+      gpsChanges = 0;
+      dofChanges = 0;
+      ms5607Changes = 0;
+
+      int gasPinLength = sizeof(gasPins) / 2;
+      for (int x = 0; x < gasPinLength; x++) {
+        gasValues[x] = 0.0;
+      }
+
+      digitalWrite(gasRelay, LOW);  // Shut-off gas sensors to save power
     }
-  }
-
-  if (gpsAltChange <= 0.0) gpsChanges = 0;
-  else if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges++;
-
-  if (dofAltChange <= 0.0) dofChanges = 0;
-  else if (dofAltChange > BAROALTCHANGETHRESHOLD) dofChanges++;
-
-  if (ms5607PressChange <= 0.0) ms5607Changes = 0;
-  else if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) {
-    ms5607Changes++;
-    if (debugMode) {
-      Serial.print(ms5607Press);
-      Serial.print(" - ");
-      Serial.print(ms5607PressLast);
-      Serial.print(" = ");
-      Serial.println(ms5607PressChange);
-    }
-  }
-
-  bool debugModeState = digitalRead(debugModePin);
-  if (!debugModeState) {
-    debugBlink();
-    descentPhase = true;
-  }
-  else if (gpsChanges >= 10) descentPhase = true;
-  else if (dofChanges >= 10) descentPhase = true;
-  else if (gpsChanges >= 5 && dofChanges >= 5) descentPhase = true;
-  else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
-
-  if (descentPhase) {
-    Serial.println("$0");
-    resetHandler = false;
-
-    EEPROM.write(1, 1);
-    if (debugMode) {
-      Serial.println();
-      Serial.println("Descent phase triggered.");
-      Serial.println();
-    }
-
-    gpsChanges = 0;
-    dofChanges = 0;
-    ms5607Changes = 0;
-
-    int gasPinLength = sizeof(gasPins) / 2;
-    for (int x = 0; x < gasPinLength; x++) {
-      gasValues[x] = 0.0;
-    }
-
-    digitalWrite(gasRelay, LOW);  // Shut-off gas sensors to save power
   }
 
   else if (!landingPhase) {
-    if (landingCapture == false) {
-      debugCamState = digitalRead(debugCamPin);
-      if (!debugCamState) debugBlink();
-      if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugCamState) {
-        Serial.println("$3");
-        landingCapture = true;
-        resetHandler = true;
-      }
-    }
-
     if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges = 0;
     else if (gpsAltChange <= GPSCHANGETHRESHOLD) gpsChanges++;
 
@@ -1200,46 +1000,29 @@ void checkChange() {
     if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) ms5607Changes = 0;
     else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
 
-    debugModeState = digitalRead(debugModePin);
-    if (!debugModeState) {
-      debugBlink();
-      landingPhase = true;
-    }
-    else if (gpsChanges >= 10) landingPhase = true;
+    if (gpsChanges >= 10) landingPhase = true;
     else if (dofChanges >= 10) landingPhase = true;
     else if (gpsChanges >= 5 && dofChanges >= 5) landingPhase = true;
     else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) landingPhase = true;
 
     if (landingPhase) {
-      Serial.println("$0");
-      resetHandler = false;
-
       if (debugMode) {
         Serial.println();
         Serial.print("Landing phase triggered. Sending location via SMS...");
       }
-      Serial1.print("AT+CMGS=\"");
-      Serial1.print(smsTargetNum);
-      Serial1.println("\"");
+      Serial1.print("AT+CMGS=\""); Serial1.print(smsTargetNum); Serial1.println("\"");
       delay(100);
-      Serial1.print("LANDING DETECTED ");
-      Serial1.print(gpsDistAway);
-      Serial1.print("m ");
-      Serial1.print(gpsCourseTo);
-      //Serial1.print(gpsCourseToText);
-      Serial1.print(" from launch site.");
+      Serial1.print("LANDING DETECTED "); Serial1.print(gpsDistAway); Serial1.print(" ");
+      Serial1.print(gpsCourseToText); Serial1.print(" of launch site.");
       Serial1.print(": http://maps.google.com/maps?q=HAB@");
-      Serial1.print(gpsLat, 6);
-      Serial1.print(",");
-      Serial1.print(gpsLng, 6);
+      Serial1.print(gpsLat, 6); Serial1.print(","); Serial1.print(gpsLng, 6);
       Serial1.println("&t=h&z=19&output=html");
       delay(100);
       Serial1.println((char)26);
       delay(100);
       smsFlush();
       smsMarkFlush = true;
-      if (debugMode) Serial.print("complete.");
-      Serial.println();
+      if (debugMode) Serial.print("complete."); Serial.println();
     }
   }
 
@@ -1259,47 +1042,24 @@ void logData(String logType) {
       if (debugMode) sd.errorHalt("Opening debug log for write failed.");
     }
 
-    time_t t = now();
-    logFile.print(loopCount);
-    logFile.print(",");
-    logFile.print(month(t));
-    logFile.print(day(t));
-    logFile.print(year(t));
-    logFile.print("-");
-    logFile.print(hour(t));
-    logFile.print(minute(t));
-    logFile.print(second(t));
-    logFile.print(",");
-    logFile.print(dofValid);
-    logFile.print(",");
-    logFile.print(accelX);
-    logFile.print(",");
-    logFile.print(accelY);
-    logFile.print(",");
-    logFile.print(accelZ);
-    logFile.print(",");
-    logFile.print(gyroX);
-    logFile.print(",");
-    logFile.print(gyroY);
-    logFile.print(",");
-    logFile.print(gyroZ);
-    logFile.print(",");
-    logFile.print(magX);
-    logFile.print(",");
-    logFile.print(magY);
-    logFile.print(",");
-    logFile.print(magZ);
-    logFile.print(",");
-    logFile.print(dofRoll);
-    logFile.print(",");
-    logFile.print(dofPitch);
-    logFile.print(",");
-    logFile.print(dofHeading);
-    logFile.print(",");
-    logFile.print(dofPressure);
-    logFile.print(",");
-    logFile.print(dofTemp);
-    logFile.print(",");
+    logFile.print(loopCount); logFile.print(",");
+    logFile.print(month()); logFile.print(day()); logFile.print(year()); logFile.print("-");
+    logFile.print(hour()); logFile.print(minute()); logFile.print(second()); logFile.print(",");
+    logFile.print(dofValid); logFile.print(",");
+    logFile.print(accelX); logFile.print(",");
+    logFile.print(accelY); logFile.print(",");
+    logFile.print(accelZ); logFile.print(",");
+    logFile.print(gyroX); logFile.print(",");
+    logFile.print(gyroY); logFile.print(",");
+    logFile.print(gyroZ); logFile.print(",");
+    logFile.print(magX); logFile.print(",");
+    logFile.print(magY); logFile.print(",");
+    logFile.print(magZ); logFile.print(",");
+    logFile.print(dofRoll); logFile.print(",");
+    logFile.print(dofPitch); logFile.print(",");
+    logFile.print(dofHeading); logFile.print(",");
+    logFile.print(dofPressure); logFile.print(",");
+    logFile.print(dofTemp); logFile.print(",");
     logFile.println(dofAlt);
   }
 
@@ -1308,33 +1068,18 @@ void logData(String logType) {
       if (debugMode) sd.errorHalt("Opening aux log for write failed.");
     }
 
-    time_t t = now();
-    logFile.print(loopCount);
-    logFile.print(",");
-    logFile.print(month(t));
-    logFile.print(day(t));
-    logFile.print(year(t));
-    logFile.print("-");
-    logFile.print(hour(t));
-    logFile.print(minute(t));
-    logFile.print(second(t));
-    logFile.print(",");
-    logFile.print(ms5607Valid);
-    logFile.print(",");
-    logFile.print(ms5607Press);
-    logFile.print(",");
-    logFile.print(ms5607Temp);
-    logFile.print(",");
+    logFile.print(loopCount); logFile.print(",");
+    logFile.print(month()); logFile.print(day()); logFile.print(year()); logFile.print("-");
+    logFile.print(hour()); logFile.print(minute()); logFile.print(second()); logFile.print(",");
+    logFile.print(ms5607Valid); logFile.print(",");
+    logFile.print(ms5607Press); logFile.print(",");
+    logFile.print(ms5607Temp); logFile.print(",");
     for (int x = 0; x < 6; x++) {
-      logFile.print(gasValues[x]);
-      logFile.print(",");
+      logFile.print(gasValues[x]); logFile.print(",");
     }
-    logFile.print(shtValid);
-    logFile.print(",");
-    logFile.print(shtTemp);
-    logFile.print(",");
-    logFile.print(shtHumidity);
-    logFile.print(",");
+    logFile.print(shtValid); logFile.print(",");
+    logFile.print(shtTemp); logFile.print(",");
+    logFile.print(shtHumidity); logFile.print(",");
     logFile.println(lightVal);
   }
   else if (logType == "gps") {
@@ -1342,42 +1087,22 @@ void logData(String logType) {
       if (debugMode) sd.errorHalt("Opening GPS log for write failed.");
     }
 
-    time_t t = now();
-    logFile.print(loopCount);
-    logFile.print(",");
-    logFile.print(month(t));
-    logFile.print(day(t));
-    logFile.print(year(t));
-    logFile.print("-");
-    logFile.print(hour(t));
-    logFile.print(minute(t));
-    logFile.print(second(t));
-    logFile.print(",");
-    logFile.print(gpsValid);
-    logFile.print(",");
-    logFile.print(gpsDate);
-    logFile.print(",");
-    logFile.print(gpsTime);
-    logFile.print(",");
-    logFile.print(gpsLat);
-    logFile.print(",");
-    logFile.print(gpsLng);
-    logFile.print(",");
-    logFile.print(gpsSats);
-    logFile.print(",");
-    logFile.print(gpsHdop);
-    logFile.print(",");
-    logFile.print(gpsAlt);
-    logFile.print(",");
-    logFile.print(gpsSpeed);
-    logFile.print(",");
-    logFile.print(gpsCourse);
-    logFile.print(",");
-    logFile.print(gpsDistAway);
-    logFile.print(",");
-    logFile.println(gpsCourseTo);
-    //logFile.print(",");
-    //logFile.println(gpsCourseToText);
+    logFile.print(loopCount); logFile.print(",");
+    logFile.print(month()); logFile.print(day()); logFile.print(year()); logFile.print("-");
+    logFile.print(hour()); logFile.print(minute()); logFile.print(second()); logFile.print(",");
+    logFile.print(gpsValid); logFile.print(",");
+    logFile.print(gpsDate); logFile.print(",");
+    logFile.print(gpsTime); logFile.print(",");
+    logFile.print(gpsLat); logFile.print(",");
+    logFile.print(gpsLng); logFile.print(",");
+    logFile.print(gpsSats); logFile.print(",");
+    logFile.print(gpsHdop); logFile.print(",");
+    logFile.print(gpsAlt); logFile.print(",");
+    logFile.print(gpsSpeed); logFile.print(",");
+    logFile.print(gpsCourse); logFile.print(",");
+    logFile.print(gpsDistAway); logFile.print(",");
+    logFile.print(gpsCourseTo); logFile.print(",");
+    logFile.println(gpsCourseToText);
   }
   else {
     if (debugMode) Serial.println("Unrecognized log type. Failed to write to SD.");
@@ -1396,145 +1121,83 @@ void logDebug(String dataString) {
     if (debugMode) sd.errorHalt("Opening debug log for write failed.");
   }
 
-  time_t t = now();
-  logFile.print(loopCount);
-  logFile.print(",");
-  logFile.print(month(t));
-  logFile.print(day(t));
-  logFile.print(year(t));
-  logFile.print("-");
-  logFile.print(hour(t));
-  logFile.print(minute(t));
-  logFile.print(second(t));
-  logFile.print(",");
+  logFile.print(loopCount); logFile.print(",");
+  logFile.print(month()); logFile.print(day()); logFile.print(year()); logFile.print("-");
+  logFile.print(hour()); logFile.print(minute()); logFile.print(second()); logFile.print(",");
   logFile.println(dataString);
   logFile.flush();
   logFile.close();
 }
 
 void debugDofPrint() {
-  Serial.print(dofRoll);
-  Serial.print("(Roll), ");
-  Serial.print(dofPitch);
-  Serial.print("(Pitch), ");
-  Serial.print(dofHeading);
-  Serial.print("(Heading) / ");
-  Serial.print(dofPressure);
-  Serial.print("hPa, ");
-  Serial.print(dofTemp);
-  Serial.print("C, ");
-  Serial.print(dofAlt);
-  Serial.println("m");
+  Serial.print(dofRoll); Serial.print("(Roll), ");
+  Serial.print(dofPitch); Serial.print("(Pitch), ");
+  Serial.print(dofHeading); Serial.print("(Heading) / ");
+  Serial.print(dofPressure); Serial.print("hPa, ");
+  Serial.print(dofTemp); Serial.print("C, ");
+  Serial.print(dofAlt); Serial.println("m");
   Serial.print("DOF Accel: ");
-  Serial.print(accelX);
-  Serial.print(",");
-  Serial.print(accelY);
-  Serial.print(",");
+  Serial.print(accelX); Serial.print(",");
+  Serial.print(accelY); Serial.print(",");
   Serial.println(accelZ);
   Serial.print("DOF Gyro: ");
-  Serial.print(gyroX);
-  Serial.print(",");
-  Serial.print(gyroY);
-  Serial.print(",");
+  Serial.print(gyroX); Serial.print(",");
+  Serial.print(gyroY); Serial.print(",");
   Serial.println(gyroZ);
   Serial.print("DOF Mag: ");
-  Serial.print(magX);
-  Serial.print(",");
-  Serial.print(magY);
-  Serial.print(",");
+  Serial.print(magX); Serial.print(",");
+  Serial.print(magY); Serial.print(",");
   Serial.println(magZ);
 }
 
 void debugAuxPrint() {
   Serial.print("MS5607: ");
-  Serial.print(ms5607Press);
-  Serial.print("hPa, ");
-  Serial.print(ms5607Temp);
-  Serial.println("C");
+  Serial.print(ms5607Press); Serial.print("hPa, ");
+  Serial.print(ms5607Temp); Serial.println("C");
   Serial.print("Gas Sensors: ");
   for (int x = 0; x < 6; x++) {
-    Serial.print(gasValues[x]);
-    Serial.print(",");
+    Serial.print(gasValues[x]); Serial.print(",");
   }
   Serial.println(gasValues[8]);
   Serial.print("SHT11: ");
-  Serial.print(shtTemp);
-  Serial.print("C, ");
-  Serial.print(shtHumidity);
-  Serial.println("%RH");
-  Serial.print("Light: ");
-  Serial.print(lightVal);
-  Serial.println("%");
+  Serial.print(shtTemp); Serial.print("C, ");
+  Serial.print(shtHumidity); Serial.println("%RH");
+  Serial.print("Light: "); Serial.print(lightVal); Serial.println("%");
 }
 
 void debugGpsPrint() {
   Serial.print("GPS: ");
-  Serial.print(gpsDate);
-  Serial.print(",");
-  Serial.print(gpsTime);
-  Serial.print(" ");
-  Serial.print(gpsLat);
-  Serial.print(",");
-  Serial.print(gpsLng);
-  Serial.print(" ");
-  Serial.print("Sats=");
-  Serial.print(gpsSats);
-  Serial.print(" ");
-  Serial.print("HDOP=");
-  Serial.print(gpsHdop);
-  Serial.print(" ");
-  Serial.print(gpsAlt);
-  Serial.print("m ");
-  Serial.print(gpsSpeed);
-  Serial.print("m/s ");
-  Serial.print(gpsCourse);
-  Serial.println("deg");
-  Serial.print(gpsDistAway);
-  Serial.print("m ");
-  Serial.print(gpsCourseTo);
-  Serial.println("deg");
-  //Serial.print(" (");
-  //Serial.print(gpsCourseToText);
-  //Serial.println(")");
+  Serial.print(gpsDate); Serial.print(",");
+  Serial.print(gpsTime); Serial.print(" ");
+  Serial.print(gpsLat); Serial.print(",");
+  Serial.print(gpsLng); Serial.print(" ");
+  Serial.print("Sats="); Serial.print(gpsSats); Serial.print(" ");
+  Serial.print("HDOP="); Serial.print(gpsHdop); Serial.print(" ");
+  Serial.print(gpsAlt); Serial.print("m ");
+  Serial.print(gpsSpeed); Serial.print("m/s ");
+  Serial.print(gpsCourse); Serial.println("deg");
+  Serial.print(gpsDistAway); Serial.print("m ");
+  Serial.print(gpsCourseTo); Serial.print("deg ");
+  Serial.print("("); Serial.print(gpsCourseToText); Serial.println(")");
 }
 
-void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
-  char smsRecNumber[16];
-  char smsMessage[16];
+void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
+  String smsRecNumber = "";
+  String smsMessage = "";
 
-  int smsMessageRawSize = sizeof(smsMessageRaw);
-  int numIndex, smsIndex;
-  for (int x = 0; ; x++) {
-    char c = smsMessageRaw[x];
-    if (c == '"') {
-      numIndex = x + 3;
-      break;
-    }
-  }
-  for (int x = smsMessageRawSize; ; x--) {
-    char c = smsMessageRaw[x];
-    if (c == '"') {
-      smsIndex = x + 3;
-      break;
-    }
-  }
-  //int numIndex = smsMessageRaw.indexOf('"') + 3;
-  //int smsIndex = smsMessageRaw.lastIndexOf('"') + 3;
+  int numIndex = smsMessageRaw.indexOf('"') + 3;
+  int smsIndex = smsMessageRaw.lastIndexOf('"') + 3;
 
-  int x = 0;
   for (numIndex; ; numIndex++) {
-    char c = smsMessageRaw[numIndex];
+    char c = smsMessageRaw.charAt(numIndex);
     if (c == '"') break;
-    smsRecNumber[x] = c;
-    x++;
+    smsRecNumber += c;
   }
 
-  x = 0;
   for (smsIndex; ; smsIndex++) {
-    char c = smsMessageRaw[smsIndex];
+    char c = smsMessageRaw.charAt(smsIndex);
     if (c == '\n' || c == '\r') break;
-    smsMessage[x] = c;
-    x++;
+    smsMessage += c;
   }
 
   //if (!debugMode) logDebug("Received SMS message: " + String(smsMessage));  // Add more info [DONT USE YET...BREAKS PROGRAM]
@@ -1547,18 +1210,13 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
   else if (execCommand == true) {
     int smsCommand = 0;
 
-    //if (smsMessage.length() == 1) smsCommand = smsMessage.toInt();
-    int messageLength = 0;
-    for (int x = 0; x < sizeof(smsMessage); x++) {
-      if (isAlphaNumeric(smsMessage[x])) messageLength++;
-    }
-    if (messageLength == 1) smsCommand = int(smsMessage[0]);
+    if (smsMessage.length() == 1) smsCommand = smsMessage.toInt();
     else; // Send SMS stating invalid command received (to incoming number)
 
     // Some sort of "if data available, then proceed to switch case"
     switch (smsCommand) {
       // LED
-      case 49:  // ASCII character 1 = "49"
+      case 1:
         if (debugMode) Serial.print("SMS command #1 issued...");
 
         for (int x = 0; x < 5; x++) {
@@ -1570,17 +1228,13 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
         break;
 
       // Location (Google Maps link sent via SMS)
-      case 50:  // ASCII character 2 = "50"
+      case 2:
         if (debugMode) Serial.print("SMS command #2 issued...");
 
-        Serial1.print("AT+CMGS=\"");
-        Serial1.print(smsTargetNum);
-        Serial1.println("\"");
+        Serial1.print("AT+CMGS=\""); Serial1.print(smsTargetNum); Serial1.println("\"");
         delay(100);
         Serial1.print("http://maps.google.com/maps?q=HAB@");
-        Serial1.print(gpsLat, 6);
-        Serial1.print(",");
-        Serial1.print(gpsLng, 6);
+        Serial1.print(gpsLat, 6); Serial1.print(","); Serial1.print(gpsLng, 6);
         Serial1.println("&t=h&z=19&output=html");
         delay(100);
         Serial1.println((char)26);
@@ -1590,7 +1244,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
         break;
 
       // Buzzer
-      case 51:  // ASCII character 3 = "51"
+      case 3:
         if (debugMode) Serial.print("SMS command #3 issued...");
 
         digitalWrite(buzzerRelay, HIGH);
@@ -1608,18 +1262,10 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
         break;
     }
 
-    if (smsCommand == 1) sprintf(smsCommandText, "LED");
-    else if (smsCommand == 3) sprintf(smsCommandText, "Buzzer");
+    if (smsCommand == 1) smsCommandText = "LED";
+    else if (smsCommand == 3) smsCommandText = "Buzzer";
 
-    if (!debugMode) {
-      char debugChar[64];
-      char debugPrefix[] = "SMS command issued: ";
-      char smsCommandChar[6];
-      sprintf(debugChar, debugPrefix);
-      sprintf(smsCommandChar, "%i", smsCommand);
-      strcat(debugChar, smsCommandChar);
-      logDebug(debugChar);
-    }
+    logDebug("SMS command issued: " + String(smsCommand));
   }
   else {
     if (debugMode) {
@@ -1630,9 +1276,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
 }
 
 void smsMenu() {
-  Serial1.print("AT + CMGS = \"");
-  Serial1.print(smsTargetNum);
-  Serial1.println("\"");
+  Serial1.print("AT + CMGS = \""); Serial1.print(smsTargetNum); Serial1.println("\"");
   delay(100);
   Serial1.print("SMS Command Menu: ");
   Serial1.print("1-LED, ");
@@ -1646,9 +1290,7 @@ void smsMenu() {
 }
 
 void smsSendConfirmation() {
-  Serial1.print("AT + CMGS = \"");
-  Serial1.print(smsTargetNum);
-  Serial1.println("\"");
+  Serial1.print("AT + CMGS = \""); Serial1.print(smsTargetNum); Serial1.println("\"");
   delay(100);
   Serial1.print(smsCommandText);
   Serial1.println(" activated.");
@@ -1656,9 +1298,7 @@ void smsSendConfirmation() {
   Serial1.println((char)26);
   delay(100);
   smsFlush();
-  for (int x = 0; x < 6; x++) {
-    smsCommandText[x] = '\0'; // CHECK IF THIS IS ACTUALLY A FUNCTIONAL APPROACH!!!!
-  }
+  smsCommandText = "";
   smsMarkFlush = true;
 }
 
@@ -1673,18 +1313,16 @@ void smsFlush() {
 
 void startupFailure() {
   while (true) {
-    digitalWrite(gpsReadyLED, LOW);
-    digitalWrite(programStartLED, HIGH);
+    digitalWrite(gpsReadyLED, LOW); digitalWrite(programStartLED, HIGH);
     delay(500);
-    digitalWrite(gpsReadyLED, HIGH);
-    digitalWrite(programStartLED, LOW);
+    digitalWrite(gpsReadyLED, HIGH); digitalWrite(programStartLED, LOW);
     delay(500);
   }
 }
 
-/* ----
-   RTTY
-   ---- */
+/*  ----
+    RTTY
+    ----  */
 
 void rttyProcessTx() {
   char rttyTxString[128];
@@ -1734,8 +1372,8 @@ void rttyProcessTx() {
 
 void rttyTxData (char *string) {
   /* Simple function to sent a char at a time to
-   ** rttyTxByte function.
-   ** NB Each char is one byte (8 Bits)
+     ** rttyTxByte function.
+    ** NB Each char is one byte (8 Bits)
   */
   char c;
 
@@ -1749,12 +1387,12 @@ void rttyTxData (char *string) {
 
 void rttyTxByte (char c) {
   /* Simple function to sent each bit of a char to
-   ** rttyTxBit function.
-   ** NB The bits are sent Least Significant Bit first
-   **
-   ** All chars should be preceded with a 0 and
-   ** proceded with a 1. 0 = Start bit; 1 = Stop bit
-   **
+    ** rttyTxBit function.
+    ** NB The bits are sent Least Significant Bit first
+    **
+    ** All chars should be preceded with a 0 and
+    ** proceded with a 1. 0 = Start bit; 1 = Stop bit
+    **
   */
   rttyTxBit (0); // Start bit
 
@@ -1770,8 +1408,8 @@ void rttyTxByte (char c) {
 }
 
 void rttyTxBit (int bit) {
-  if (bit) digitalWrite(rttyTxPin, HIGH);
-  else digitalWrite(rttyTxPin, LOW);
+  if (bit) digitalWrite(radioPin, HIGH);
+  else digitalWrite(radioPin, LOW);
 
   delayMicroseconds(3370); // 300 baud
   //delayMicroseconds(10000); // For 50 Baud uncomment this and the line below.
@@ -1794,25 +1432,12 @@ uint16_t rttyCRC16Checksum (char *string) {
   return crc;
 }
 
-/* ---------
-   HEARTBEAT
-   ---------  */
+/*  ---------
+    HEARTBEAT
+    ---------  */
 
 void heartbeat() {
   digitalWrite(heartbeatOutputPin, HIGH);
   delay(10);
   digitalWrite(heartbeatOutputPin, LOW);
-}
-
-/* -----
-   DEBUG
-   -----  */
-
-void debugBlink() {
-  for (int x = 0; x < 3; x++) {
-    delay(250);
-    digitalWrite(debugLED, HIGH);
-    delay(250);
-    digitalWrite(debugLED, LOW);
-  }
 }

@@ -1,0 +1,21 @@
+8 $KG5CKI,
+2 messageCount,
+2 gpsValid,
+10 gpsLat,
+10 gpsLng,
+10 gpsAlt,
+10 gpsSpeed,
+7 gpsCourse,
+7 gpsDistAway,
+7 gpsCourseTo,
+2 gpsCourseToText,
+10 dofAlt,
+5 CRC16CHECKSUM
+
+= 88
+
+rttyTxString[128]
+
+char testArray[] = "$$KG5CKI,1000,1,30.123456,30.123456,100000.12,100.12,123.12,1000.12,123.12,WSW,100000.12,04*CFC";
+
+sizeof(testArray) = 96

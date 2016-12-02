@@ -1,0 +1,24 @@
+Test voltage output from PWM.
+Determine I/O pins on RPi and Arduino.
+Baseline BMP altitude at start --> Output to RPi GPIO when at specified altitude
+
+Arduino Mega PWM:
+2-13, 44-46
+
+sudo streamer -c /dev/video0 -s 640x480 -f jpeg -t 60 -r 15 -j 75 -w 0 -o tmp.avi
+sudo raspistill -o test.jpg
+
+sudo fswebcam --no-banner -d /dev/video0 -r 1280x720 tmp0.jpg
+sudo fswebcam --no-banner -d /dev/video1 -r 1280x720 tmp1.jpg
+
+analogWrite() values:
+0 --> 255
+0 --> 5V
+1unit = 0.019608V
+3.3V = 168.3units (Arduino @ 168)
+TESTING CONFIRMED THIS CALCULATION
+
+Trigger video recording on balloon burst!
+
+Grounding rod and anti-static strap when filling with H2.
+
