@@ -41,6 +41,7 @@
   2 --> Landing phase
 
   TO DO:
+  - Create test interrupt functions for pins 44-47 (Trigger fake alt/checkChange()/etc values)
   - TEST ARDUINO-->RPI SERIAL COMMUNICATION TRIGGERS
   - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
   - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
@@ -108,6 +109,9 @@
 #define GPSCHANGETHRESHOLD 5.0 // Negative altitude change (m) from GPS to signify real altitude decrease
 #define HEATERTRIGGERTEMP 0.0  // Temperature (C) below which internal payload heater activated
 #define BUZZERACTIVETIME 30000  // Time (ms) that buzzer remains active after triggered by SMS command
+#define LAUNCHCAPTURETHRESHOLD 1000.0
+#define PEAKCAPTURETHRESHOLD 500.0  // NEED TO CHANGE!!!!
+#define LANDINGCAPTURETHRESHOLD 3000.0
 
 //#define DAYLIGHTSAVINGS
 
@@ -391,7 +395,7 @@ void smsPower(bool powerState) {
 }
 
 void smsConfirmReady() {
-  String smsMessageRaw = "";
+  char smsMessageRaw[128];
   while (smsReadyReceived == false) {
     if (!Serial1.available()) {
       while (!Serial1.available()) {
@@ -402,11 +406,14 @@ void smsConfirmReady() {
       }
     }
     if (Serial1.available()) {
+      int x = 0;
       while (Serial1.available()) {
         char c = Serial1.read();
-        smsMessageRaw += c;
-        delay(10);
+        smsMessageRaw[x] = c;
+        x++;
+        delay(5);
       }
+      smsMessageRaw[x] = '\0';
       smsHandler(smsMessageRaw, false, true);
     }
   }
@@ -634,14 +641,14 @@ void setup() {
         }
       }
     }
-    else {
-      Serial.println("starting program.");
-      Serial.println();
-      Serial.println(F("-----------------"));
-      Serial.println(F("---- PROGRAM ----"));
-      Serial.println(F("-----------------"));
-      Serial.println();
-    }
+  }
+  else {
+    Serial.println("starting program.");
+    Serial.println();
+    Serial.println(F("-----------------"));
+    Serial.println(F("---- PROGRAM ----"));
+    Serial.println(F("-----------------"));
+    Serial.println();
   }
 
   EEPROM.update(0, 1);
@@ -666,7 +673,15 @@ void loop() {
           Serial.print("Failed to read DOF. Count=");
           Serial.println(ada1604Failures);
         }
-        else logDebug("Failed to read DOF. Count=" + String(ada1604Failures));
+        else {
+          char debugChar[64];
+          char dofFailuresChar[6];
+          char debugPrefix[] = "Failed to read DOF. Count=";
+          sprintf(debugChar, debugPrefix);
+          sprintf(dofFailuresChar, "%i", ada1604Failures);
+          strcat(debugChar, dofFailuresChar);
+          logDebug(debugChar);
+        }
       }
       if (debugMode) {
         Serial.print("DOF Loop #: ");
@@ -694,7 +709,15 @@ void loop() {
         Serial.print("Failed to read MS5607. Count=");
         Serial.println(ms5607Failures);
       }
-      else logDebug("Failed to read MS5607. Count=" + String(ms5607Failures));
+      else {
+        char debugChar[64];
+        char ms5607FailuresChar[6];
+        char debugPrefix[] = "Failed to read MS5607. Count=";
+        sprintf(debugChar, debugPrefix);
+        sprintf(ms5607FailuresChar, "%i", ms5607Failures);
+        strcat(debugChar, ms5607FailuresChar);
+        logDebug(debugChar);
+      }
       for (int x = 0; x < 5; x++) {
         if (readMS5607()) break;
         else {
@@ -703,7 +726,15 @@ void loop() {
             Serial.print("Failed to read MS5607. Count=");
             Serial.println(ms5607Failures);
           }
-          else logDebug("Failed to read MS5607. Count=" + String(ms5607Failures));
+          else {
+            char debugChar[64];
+            char ms5607FailuresChar[6];
+            char debugPrefix[] = "Failed to read MS5607. Count=";
+            sprintf(debugChar, debugPrefix);
+            sprintf(ms5607FailuresChar, "%i", ms5607Failures);
+            strcat(debugChar, ms5607FailuresChar);
+            logDebug(debugChar);
+          }
           ms5607Temp = 0.0;
           ms5607Press = 0.0;
         }
@@ -719,7 +750,15 @@ void loop() {
           Serial.print("Failed to read gas sensors. Count=");
           Serial.println(gasFailures);
         }
-        else logDebug("Failed to read gas sensors. Count=" + String(gasFailures));
+        else {
+          char debugChar[64];
+          char gasFailuresChar[6];
+          char debugPrefix[] = "Failed to read gas sensors. Count=";
+          sprintf(debugChar, debugPrefix);
+          sprintf(gasFailuresChar, "%i", gasFailures);
+          strcat(debugChar, gasFailuresChar);
+          logDebug(debugChar);
+        }
       }
     }
 
@@ -730,7 +769,15 @@ void loop() {
         Serial.print("Failed to read SHT11. Count=");
         Serial.println(shtFailures);
       }
-      else logDebug("Failed to read SHT11. Count=" + String(shtFailures));
+      else {
+        char debugChar[64];
+        char shtFailuresChar[6];
+        char debugPrefix[] = "Failed to read SHT11. Count=";
+        sprintf(debugChar, debugPrefix);
+        sprintf(shtFailuresChar, "%i", shtFailures);
+        strcat(debugChar, shtFailuresChar);
+        logDebug(debugChar);
+      }
     }
 
     lightValid = readLight();
@@ -740,7 +787,15 @@ void loop() {
         Serial.print("Failed to read light sensor. Count=");
         Serial.println(lightFailures);
       }
-      else logDebug("Failed to read light sensor. Count=" + String(lightFailures));
+      else {
+        char debugChar[64];
+        char lightFailuresChar[6];
+        char debugPrefix[] = "Failed to read light sensor. Count=";
+        sprintf(debugChar, debugPrefix);
+        sprintf(lightFailuresChar, "%i", lightFailures);
+        strcat(debugChar, lightFailuresChar);
+        logDebug(debugChar);
+      }
     }
     if (debugMode) Serial.print("Aux Loop #: ");
     Serial.println(auxLoopCount);
@@ -773,7 +828,15 @@ void loop() {
       Serial.print("Failed to read GPS. Count=");
       Serial.println(gpsFailures);
     }
-    else logDebug("Failed to read GPS. Count=" + String(gpsFailures));
+    else {
+      char debugChar[64];
+      char gpsFailuresChar[6];
+      char debugPrefix[] = "Failed to read GPS. Count=";
+      sprintf(debugChar, debugPrefix);
+      sprintf(gpsFailuresChar, "%i", gpsFailures);
+      strcat(debugChar, gpsFailuresChar);
+      logDebug(debugChar);
+    }
     gpsLat = gpsLatLast;
     gpsLng = gpsLngLast;
   }
@@ -801,11 +864,13 @@ void loop() {
 
   if (Serial1.available()) {
     if (debugMode) Serial.println("Incoming GPRS serial data.");
-    String smsMessageRaw = "";
+    char smsMessageRaw[128];
+    int x = 0;
     while (Serial1.available()) {
       char c = Serial1.read();
-      smsMessageRaw += c;
-      delay(10);
+      smsMessageRaw[x] = c;
+      x++;
+      delay(5);
     }
     if (debugMode) Serial.print("Processing GPRS data...");
     smsHandler(smsMessageRaw, true, false);
@@ -918,21 +983,21 @@ bool readGps() {
       uint8_t Second = gps.time.second();
 
       uint16_t yearRaw = gps.date.year();
-      String yearStringRaw = String(yearRaw);
-      int yearLength = yearStringRaw.length();
+      char yearCharRaw[6];
+      char yearChar[3];
 
-      if (yearLength == 4 && age < 500) {
-        String yearString;
-        for (int x = 2; x < 4; x++) {
-          char c = yearStringRaw.charAt(x);
-          yearString += c;
-        }
-        int Year = yearString.toInt();
+      sprintf(yearCharRaw, "%i", yearRaw);
 
-        setTime(Hour, Minute, Second, Day, Month, Year);
-        adjustTime(gpsTimeOffset * SECS_PER_HOUR);
-        gpsTimeSet = true;
+      for (int x = 2; x < 4; x++) {
+        char c = yearCharRaw[x];
+        yearChar[x - 2] = c;
       }
+      yearChar[2] = '\0';
+      uint16_t Year = atoi(yearChar);
+
+      setTime(Hour, Minute, Second, Day, Month, Year);
+      adjustTime(gpsTimeOffset * SECS_PER_HOUR);
+      gpsTimeSet = true;
     }
 
     gpsDistAway =
@@ -1008,12 +1073,24 @@ void checkChange() {
   if (dofTemp <= HEATERTRIGGERTEMP && heaterStatus == false) {
     digitalWrite(heaterRelay, HIGH);
     heaterStatus = true;
-    logDebug("Heater activated @ " + String(dofTemp));
+    char debugChar[64];
+    char debugPrefix[] = "Heater activated @ ";
+    char dofTempChar[6];
+    dtostrf(dofTemp, 2, 2, dofTempChar);
+    sprintf(debugChar, debugPrefix);
+    strcat(debugChar, dofTempChar);
+    logDebug(debugChar);
   }
   else if (dofTemp > HEATERTRIGGERTEMP && heaterStatus == true) {
     digitalWrite(heaterRelay, LOW);
     heaterStatus = false;
-    logDebug("Heater inactivated @ " + String(dofTemp));
+    char debugChar[64];
+    char debugPrefix[] = "Heater inactivated @ ";
+    char dofTempChar[6];
+    dtostrf(dofTemp, 2, 2, dofTempChar);
+    sprintf(debugChar, debugPrefix);
+    strcat(debugChar, dofTempChar);
+    logDebug(debugChar);
   }
 
   if (!descentPhase) {
@@ -1023,9 +1100,16 @@ void checkChange() {
       resetHandler = true;
     }
     else if (launchCapture == true && resetHandler == true) {
-      if ((dofAlt - dofAltOffset) >= 1000.0) {
+      if ((dofAlt - dofAltOffset) > LAUNCHCAPTURETHRESHOLD) {
         Serial.println("$0");
         resetHandler = false;
+      }
+    }
+    else if (launchCapture == true && resetHandler == false && peakCapture == false) {
+      if (dofPressure < PEAKCAPTURETHRESHOLD) {
+        Serial.println("$2");
+        peakCapture = true;
+        resetHandler = true;
       }
     }
 
@@ -1053,6 +1137,9 @@ void checkChange() {
     else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
 
     if (descentPhase) {
+      Serial.println("$0");
+      resetHandler = false;
+
       EEPROM.write(1, 1);
       if (debugMode) {
         Serial.println();
@@ -1074,22 +1161,8 @@ void checkChange() {
   }
 
   else if (!landingPhase) {
-    if (peakCapture == false) {
-      if (STUFF) {
-        Serial.println("$2");
-        peakCapture = true;
-        resetHandler = true;
-      }
-    }
-    else if (peakCapture == true && resetHandler == true) {
-      if (THINGS) {
-        Serial.println("$0");
-        resetHandler = false;
-      }
-    }
-
-    if (peakCapture == true && resetHandler == false && landingCapture == false) {
-      if ((dofAlt - dofAltOffset) < 3000.0) {
+    if (landingCapture == false) {
+      if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD) {
         Serial.println("$3");
         landingCapture = true;
         resetHandler = true;
@@ -1158,15 +1231,16 @@ void logData(String logType) {
       if (debugMode) sd.errorHalt("Opening debug log for write failed.");
     }
 
+    time_t t = now();
     logFile.print(loopCount);
     logFile.print(",");
-    logFile.print(month());
-    logFile.print(day());
-    logFile.print(year());
+    logFile.print(month(t));
+    logFile.print(day(t));
+    logFile.print(year(t));
     logFile.print("-");
-    logFile.print(hour());
-    logFile.print(minute());
-    logFile.print(second());
+    logFile.print(hour(t));
+    logFile.print(minute(t));
+    logFile.print(second(t));
     logFile.print(",");
     logFile.print(dofValid);
     logFile.print(",");
@@ -1206,15 +1280,16 @@ void logData(String logType) {
       if (debugMode) sd.errorHalt("Opening aux log for write failed.");
     }
 
+    time_t t = now();
     logFile.print(loopCount);
     logFile.print(",");
-    logFile.print(month());
-    logFile.print(day());
-    logFile.print(year());
+    logFile.print(month(t));
+    logFile.print(day(t));
+    logFile.print(year(t));
     logFile.print("-");
-    logFile.print(hour());
-    logFile.print(minute());
-    logFile.print(second());
+    logFile.print(hour(t));
+    logFile.print(minute(t));
+    logFile.print(second(t));
     logFile.print(",");
     logFile.print(ms5607Valid);
     logFile.print(",");
@@ -1239,15 +1314,16 @@ void logData(String logType) {
       if (debugMode) sd.errorHalt("Opening GPS log for write failed.");
     }
 
+    time_t t = now();
     logFile.print(loopCount);
     logFile.print(",");
-    logFile.print(month());
-    logFile.print(day());
-    logFile.print(year());
+    logFile.print(month(t));
+    logFile.print(day(t));
+    logFile.print(year(t));
     logFile.print("-");
-    logFile.print(hour());
-    logFile.print(minute());
-    logFile.print(second());
+    logFile.print(hour(t));
+    logFile.print(minute(t));
+    logFile.print(second(t));
     logFile.print(",");
     logFile.print(gpsValid);
     logFile.print(",");
@@ -1292,15 +1368,16 @@ void logDebug(String dataString) {
     if (debugMode) sd.errorHalt("Opening debug log for write failed.");
   }
 
+  time_t t = now();
   logFile.print(loopCount);
   logFile.print(",");
-  logFile.print(month());
-  logFile.print(day());
-  logFile.print(year());
+  logFile.print(month(t));
+  logFile.print(day(t));
+  logFile.print(year(t));
   logFile.print("-");
-  logFile.print(hour());
-  logFile.print(minute());
-  logFile.print(second());
+  logFile.print(hour(t));
+  logFile.print(minute(t));
+  logFile.print(second(t));
   logFile.print(",");
   logFile.println(dataString);
   logFile.flush();
@@ -1393,23 +1470,43 @@ void debugGpsPrint() {
   Serial.println(")");
 }
 
-void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
-  String smsRecNumber = "";
-  String smsMessage = "";
+void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
+  char smsRecNumber[16];
+  char smsMessage[16];
 
-  int numIndex = smsMessageRaw.indexOf('"') + 3;
-  int smsIndex = smsMessageRaw.lastIndexOf('"') + 3;
+  int smsMessageRawSize = sizeof(smsMessageRaw);
+  int numIndex, smsIndex;
+  for (int x = 0; ; x++) {
+    char c = smsMessageRaw[x];
+    if (c == '"') {
+      numIndex = x + 3;
+      break;
+    }
+  }
+  for (int x = smsMessageRawSize; ; x--) {
+    char c = smsMessageRaw[x];
+    if (c == '"') {
+      smsIndex = x + 3;
+      break;
+    }
+  }
+  //int numIndex = smsMessageRaw.indexOf('"') + 3;
+  //int smsIndex = smsMessageRaw.lastIndexOf('"') + 3;
 
+  int x = 0;
   for (numIndex; ; numIndex++) {
-    char c = smsMessageRaw.charAt(numIndex);
+    char c = smsMessageRaw[numIndex];
     if (c == '"') break;
-    smsRecNumber += c;
+    smsRecNumber[x] = c;
+    x++;
   }
 
+  x = 0;
   for (smsIndex; ; smsIndex++) {
-    char c = smsMessageRaw.charAt(smsIndex);
+    char c = smsMessageRaw[smsIndex];
     if (c == '\n' || c == '\r') break;
-    smsMessage += c;
+    smsMessage[x] = c;
+    x++;
   }
 
   //if (!debugMode) logDebug("Received SMS message: " + String(smsMessage));  // Add more info [DONT USE YET...BREAKS PROGRAM]
@@ -1422,13 +1519,18 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
   else if (execCommand == true) {
     int smsCommand = 0;
 
-    if (smsMessage.length() == 1) smsCommand = smsMessage.toInt();
+    //if (smsMessage.length() == 1) smsCommand = smsMessage.toInt();
+    int messageLength = 0;
+    for (int x = 0; x < sizeof(smsMessage); x++) {
+      if (isAlphaNumeric(smsMessage[x])) messageLength++;
+    }
+    if (messageLength == 1) smsCommand = int(smsMessage[0]);
     else; // Send SMS stating invalid command received (to incoming number)
 
     // Some sort of "if data available, then proceed to switch case"
     switch (smsCommand) {
       // LED
-      case 1:
+      case 49:  // ASCII character 1 = "49"
         if (debugMode) Serial.print("SMS command #1 issued...");
 
         for (int x = 0; x < 5; x++) {
@@ -1440,7 +1542,7 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
         break;
 
       // Location (Google Maps link sent via SMS)
-      case 2:
+      case 50:  // ASCII character 2 = "50"
         if (debugMode) Serial.print("SMS command #2 issued...");
 
         Serial1.print("AT+CMGS=\"");
@@ -1460,7 +1562,7 @@ void smsHandler(String smsMessageRaw, bool execCommand, bool smsStartup) {
         break;
 
       // Buzzer
-      case 3:
+      case 51:  // ASCII character 3 = "51"
         if (debugMode) Serial.print("SMS command #3 issued...");
 
         digitalWrite(buzzerRelay, HIGH);
@@ -1630,8 +1732,8 @@ void rttyTxByte (char c) {
 }
 
 void rttyTxBit (int bit) {
-  if (bit) digitalWrite(radioPin, HIGH);
-  else digitalWrite(radioPin, LOW);
+  if (bit) digitalWrite(rttyTxPin, HIGH);
+  else digitalWrite(rttyTxPin, LOW);
 
   delayMicroseconds(3370); // 300 baud
   //delayMicroseconds(10000); // For 50 Baud uncomment this and the line below.
