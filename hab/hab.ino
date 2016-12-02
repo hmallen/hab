@@ -1601,7 +1601,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
     // Some sort of "if data available, then proceed to switch case"
     switch (smsCommand) {
       // LED
-      case 49:  // ASCII character 1 = "49"
+      case 49:  // ASCII character '1' = 49
         if (debugMode) Serial.print("SMS command #1 issued...");
 
         for (int x = 0; x < 5; x++) {
@@ -1613,7 +1613,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
         break;
 
       // Location (Google Maps link sent via SMS)
-      case 50:  // ASCII character 2 = "50"
+      case 50:  // ASCII character '2' = 50
         if (debugMode) Serial.print("SMS command #2 issued...");
 
         Serial1.print("AT+CMGS=\"");
@@ -1633,7 +1633,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
         break;
 
       // Buzzer
-      case 51:  // ASCII character 3 = "51"
+      case 51:  // ASCII character '3' = 51
         if (debugMode) Serial.print("SMS command #3 issued...");
 
         digitalWrite(buzzerRelay, HIGH);
@@ -1699,8 +1699,8 @@ void smsSendConfirmation() {
   Serial1.println((char)26);
   delay(100);
   smsFlush();
-  for (int x = 0; x < 6; x++) {
-    smsCommandText[x] = '\0'; // CHECK IF THIS IS ACTUALLY A FUNCTIONAL APPROACH!!!!
+  for (int x = 0; x < sizeof(smsCommandText); x++) {
+    smsCommandText[x] = '\0';
   }
   smsMarkFlush = true;
 }
