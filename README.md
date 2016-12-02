@@ -1,10 +1,7 @@
 # High-Altitude Balloon
 
 TO DO:
-- Mount RTTY board
 - Wire power: 1)RTTY 2)Buzzer 3)Relays
-- Add webcam to lid (port usb through to RPi)
-- Create new RPi script for photos/videos only (RTTY TX moved to Arduino)
 - Ensure that gas sensors receiving correct (5V) voltage [2.5V was measured after first battery test]
 - Weigh full payload package
 -- Determine hydrogen vs. helium w/ 600g balloon
