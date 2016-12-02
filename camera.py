@@ -50,16 +50,21 @@ def serial_receive(serialData):
 
 
 def serial_send(serialData):
-    print 'DO STUFF AND THINGS.'
+    habSerial.write(serialData)
 
 
 def capture_photo(camType):
     if camType == 'rpi':
-        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
-        filename = 'media/photos/RPI-' + timestamp + '.jpg'
-        camera.start_preview()
-        sleep(2)
-        camera.capture(filename)
+        #timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        #filename = 'media/photos/RPI-' + timestamp + '.jpg'
+        #camera.start_preview()
+        #sleep(2)
+        #camera.capture(filename)
+        popenString = './rpi_photo.sh'
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
     elif camType == 'up':
         popenString = './webcam_photo.sh 0'
         popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -76,19 +81,24 @@ def capture_photo(camType):
 
 def capture_video(camType, vidLength):
     if camType == 'rpi':
-        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
-        filename = 'media/videos/RPI-' + timestamp + '.h264'
-        camera.start_recording(filename)
-        camera.wait_recording(vidLength)
-        camera.stop_recording()
+        #timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        #filename = 'media/videos/RPI-' + timestamp + '.h264'
+        #camera.start_recording(filename)
+        #camera.wait_recording(vidLength)
+        #camera.stop_recording()
+        popenString = './rpi_video.sh ' + str(vidLength)
+        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        std_out, std_err = popenCommand.communicate()
+        status = std_out.strip('\n')
+        error = std_err.strip('\n')
     elif camType == 'up':
-        popenString = './webcam_video.sh 0' + ' ' + str(vidLength)
+        popenString = './webcam_video.sh 0 ' + str(vidLength)
         popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
     elif camType == 'down':
-        popenString = './webcam_video.sh 1' + ' ' + str(vidLength)
+        popenString = './webcam_video.sh 1 ' + str(vidLength)
         popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
@@ -175,7 +185,7 @@ while True:
         habCommand = serial_receive(habOutput)
         print habCommand
         if habCommand == '0':
-            habSerial.write('$0')
+            serial_send('$0')
             break
 
 while True:
