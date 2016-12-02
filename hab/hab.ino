@@ -42,6 +42,7 @@
 
   TO DO:
   - Create test interrupt functions for pins 44-47 (Trigger fake alt/checkChange()/etc values)
+  -- TEST INPUT VALUES FOR PIN (i.e. INPUT_PULLUP STATE @ 1/0)
   - TEST ARDUINO-->RPI SERIAL COMMUNICATION TRIGGERS
   - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
   - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
@@ -121,8 +122,14 @@ const int gpsTimeOffset = -4;
 const int gpsTimeOffset = -5;
 #endif
 
+// DEBUG
 const bool debugMode = false;
 const bool debugSmsOff = false;
+const bool debugInputMode = true;
+const int debugLED = 13;
+const int debugCamPin = 44;
+const int debugModePin = 45;
+bool debugCamState, debugModeState;
 
 // Digital Pins
 const int chipSelect = SS;
@@ -162,13 +169,13 @@ bool gpsTimeSet = false;
 bool smsReadyReceived = false;
 bool smsFirstFlush = false;
 bool smsMarkFlush = false;
-String smsCommandText = "";
+char smsCommandText[6];
 bool gpsFix = false;
 float gpsLaunchLat, gpsLaunchLng;
 float gpsLat, gpsLng, gpsAlt, gpsSpeed;
 uint32_t gpsDate, gpsTime, gpsSats, gpsCourse;
 float gpsDistAway, gpsCourseTo;
-String gpsCourseToText;
+//String gpsCourseToText;
 int32_t gpsHdop;
 float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;  // Can this be a const float??
 float accelX, accelY, accelZ;
@@ -442,6 +449,11 @@ void setup() {
   digitalWrite(heartbeatOutputPin, LOW);
   pinMode(buzzerRelay, OUTPUT);
   digitalWrite(buzzerRelay, LOW);
+  pinMode(debugLED, OUTPUT);
+  pinMode(debugLED, HIGH);
+
+  pinMode(debugCamPin, INPUT_PULLUP);
+  pinMode(debugModePin, INPUT_PULLUP);
   pinMode(gpsPpsPin, INPUT_PULLUP);
   pinMode(programStartPin, INPUT_PULLUP);
 
@@ -1013,7 +1025,7 @@ bool readGps() {
         gpsLaunchLat,
         gpsLaunchLng);
 
-    gpsCourseToText = String(gps.cardinal(gpsCourseTo));
+    //gpsCourseToText = String(gps.cardinal(gpsCourseTo));
 
     return true;
   }
@@ -1106,63 +1118,73 @@ void checkChange() {
       }
     }
     else if (launchCapture == true && resetHandler == false && peakCapture == false) {
-      if (dofPressure < PEAKCAPTURETHRESHOLD) {
+      //if (dofPressure < PEAKCAPTURETHRESHOLD) {
+      bool debugCamState = digitalRead(debugCamPin);
+      if (!debugCamState) debugBlink();
+      if (dofPressure < PEAKCAPTURETHRESHOLD || !debugCamState) {
         Serial.println("$2");
         peakCapture = true;
         resetHandler = true;
       }
     }
+  }
 
-    if (gpsAltChange <= 0.0) gpsChanges = 0;
-    else if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges++;
+  if (gpsAltChange <= 0.0) gpsChanges = 0;
+  else if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges++;
 
-    if (dofAltChange <= 0.0) dofChanges = 0;
-    else if (dofAltChange > BAROALTCHANGETHRESHOLD) dofChanges++;
+  if (dofAltChange <= 0.0) dofChanges = 0;
+  else if (dofAltChange > BAROALTCHANGETHRESHOLD) dofChanges++;
 
-    if (ms5607PressChange <= 0.0) ms5607Changes = 0;
-    else if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) {
-      ms5607Changes++;
-      if (debugMode) {
-        Serial.print(ms5607Press);
-        Serial.print(" - ");
-        Serial.print(ms5607PressLast);
-        Serial.print(" = ");
-        Serial.println(ms5607PressChange);
-      }
+  if (ms5607PressChange <= 0.0) ms5607Changes = 0;
+  else if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) {
+    ms5607Changes++;
+    if (debugMode) {
+      Serial.print(ms5607Press);
+      Serial.print(" - ");
+      Serial.print(ms5607PressLast);
+      Serial.print(" = ");
+      Serial.println(ms5607PressChange);
+    }
+  }
+
+  bool debugModeState = digitalRead(debugModePin);
+  if (!debugModeState) {
+    debugBlink();
+    descentPhase = true;
+  }
+  else if (gpsChanges >= 10) descentPhase = true;
+  else if (dofChanges >= 10) descentPhase = true;
+  else if (gpsChanges >= 5 && dofChanges >= 5) descentPhase = true;
+  else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
+
+  if (descentPhase) {
+    Serial.println("$0");
+    resetHandler = false;
+
+    EEPROM.write(1, 1);
+    if (debugMode) {
+      Serial.println();
+      Serial.println("Descent phase triggered.");
+      Serial.println();
     }
 
-    if (gpsChanges >= 10) descentPhase = true;
-    else if (dofChanges >= 10) descentPhase = true;
-    else if (gpsChanges >= 5 && dofChanges >= 5) descentPhase = true;
-    else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
+    gpsChanges = 0;
+    dofChanges = 0;
+    ms5607Changes = 0;
 
-    if (descentPhase) {
-      Serial.println("$0");
-      resetHandler = false;
-
-      EEPROM.write(1, 1);
-      if (debugMode) {
-        Serial.println();
-        Serial.println("Descent phase triggered.");
-        Serial.println();
-      }
-
-      gpsChanges = 0;
-      dofChanges = 0;
-      ms5607Changes = 0;
-
-      int gasPinLength = sizeof(gasPins) / 2;
-      for (int x = 0; x < gasPinLength; x++) {
-        gasValues[x] = 0.0;
-      }
-
-      digitalWrite(gasRelay, LOW);  // Shut-off gas sensors to save power
+    int gasPinLength = sizeof(gasPins) / 2;
+    for (int x = 0; x < gasPinLength; x++) {
+      gasValues[x] = 0.0;
     }
+
+    digitalWrite(gasRelay, LOW);  // Shut-off gas sensors to save power
   }
 
   else if (!landingPhase) {
     if (landingCapture == false) {
-      if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD) {
+      debugCamState = digitalRead(debugCamPin);
+      if (!debugCamState) debugBlink();
+      if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugCamState) {
         Serial.println("$3");
         landingCapture = true;
         resetHandler = true;
@@ -1178,7 +1200,12 @@ void checkChange() {
     if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) ms5607Changes = 0;
     else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
 
-    if (gpsChanges >= 10) landingPhase = true;
+    debugModeState = digitalRead(debugModePin);
+    if (!debugModeState) {
+      debugBlink();
+      landingPhase = true;
+    }
+    else if (gpsChanges >= 10) landingPhase = true;
     else if (dofChanges >= 10) landingPhase = true;
     else if (gpsChanges >= 5 && dofChanges >= 5) landingPhase = true;
     else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) landingPhase = true;
@@ -1197,9 +1224,10 @@ void checkChange() {
       delay(100);
       Serial1.print("LANDING DETECTED ");
       Serial1.print(gpsDistAway);
-      Serial1.print(" ");
-      Serial1.print(gpsCourseToText);
-      Serial1.print(" of launch site.");
+      Serial1.print("m ");
+      Serial1.print(gpsCourseTo);
+      //Serial1.print(gpsCourseToText);
+      Serial1.print(" from launch site.");
       Serial1.print(": http://maps.google.com/maps?q=HAB@");
       Serial1.print(gpsLat, 6);
       Serial1.print(",");
@@ -1347,9 +1375,9 @@ void logData(String logType) {
     logFile.print(",");
     logFile.print(gpsDistAway);
     logFile.print(",");
-    logFile.print(gpsCourseTo);
-    logFile.print(",");
-    logFile.println(gpsCourseToText);
+    logFile.println(gpsCourseTo);
+    //logFile.print(",");
+    //logFile.println(gpsCourseToText);
   }
   else {
     if (debugMode) Serial.println("Unrecognized log type. Failed to write to SD.");
@@ -1464,10 +1492,10 @@ void debugGpsPrint() {
   Serial.print(gpsDistAway);
   Serial.print("m ");
   Serial.print(gpsCourseTo);
-  Serial.print("deg ");
-  Serial.print("(");
-  Serial.print(gpsCourseToText);
-  Serial.println(")");
+  Serial.println("deg");
+  //Serial.print(" (");
+  //Serial.print(gpsCourseToText);
+  //Serial.println(")");
 }
 
 void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
@@ -1580,10 +1608,18 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
         break;
     }
 
-    if (smsCommand == 1) smsCommandText = "LED";
-    else if (smsCommand == 3) smsCommandText = "Buzzer";
+    if (smsCommand == 1) sprintf(smsCommandText, "LED");
+    else if (smsCommand == 3) sprintf(smsCommandText, "Buzzer");
 
-    logDebug("SMS command issued: " + String(smsCommand));
+    if (!debugMode) {
+      char debugChar[64];
+      char debugPrefix[] = "SMS command issued: ";
+      char smsCommandChar[6];
+      sprintf(debugChar, debugPrefix);
+      sprintf(smsCommandChar, "%i", smsCommand);
+      strcat(debugChar, smsCommandChar);
+      logDebug(debugChar);
+    }
   }
   else {
     if (debugMode) {
@@ -1620,7 +1656,9 @@ void smsSendConfirmation() {
   Serial1.println((char)26);
   delay(100);
   smsFlush();
-  smsCommandText = "";
+  for (int x = 0; x < 6; x++) {
+    smsCommandText[x] = '\0'; // CHECK IF THIS IS ACTUALLY A FUNCTIONAL APPROACH!!!!
+  }
   smsMarkFlush = true;
 }
 
@@ -1644,9 +1682,9 @@ void startupFailure() {
   }
 }
 
-/*  ----
-  RTTY
-  ----  */
+/* ----
+   RTTY
+   ---- */
 
 void rttyProcessTx() {
   char rttyTxString[128];
@@ -1756,12 +1794,25 @@ uint16_t rttyCRC16Checksum (char *string) {
   return crc;
 }
 
-/*  ---------
-  HEARTBEAT
-  ---------  */
+/* ---------
+   HEARTBEAT
+   ---------  */
 
 void heartbeat() {
   digitalWrite(heartbeatOutputPin, HIGH);
   delay(10);
   digitalWrite(heartbeatOutputPin, LOW);
+}
+
+/* -----
+   DEBUG
+   -----  */
+
+void debugBlink() {
+  for (int x = 0; x < 3; x++) {
+    delay(250);
+    digitalWrite(debugLED, HIGH);
+    delay(250);
+    digitalWrite(debugLED, LOW);
+  }
 }
