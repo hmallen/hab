@@ -18,7 +18,7 @@
 const int programReadyPin = 2;
 const int heartbeatInputPin = 3;
 const int resetPin = 4;
-//const int heartbeatLED = 13;
+const int heartbeatLED = 13;
 
 void watchdogSetup() {
   cli();
@@ -32,7 +32,7 @@ void setup() {
   watchdogSetup();
 
   pinMode(resetPin, OUTPUT); digitalWrite(resetPin, HIGH);
-  //pinMode(heartbeatLED, OUTPUT); digitalWrite(heartbeatLED, LOW);
+  pinMode(heartbeatLED, OUTPUT); digitalWrite(heartbeatLED, LOW);
   pinMode(programReadyPin, INPUT_PULLUP);
   pinMode(heartbeatInputPin, INPUT_PULLUP);
 
