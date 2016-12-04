@@ -1112,8 +1112,9 @@ bool readDs() {
   }
 
   if (OneWire::crc8(addr, 7) != addr[7]) {
-    char debugString[32];
-    sprintf(debugString, "DS18B20 CRC not valid.");
+    //char debugString[32];
+    //sprintf(debugString, "DS18B20 CRC not valid.");
+    char debugString[] = "DS18B20 CRC not valid.";
     logDebug(debugString);
   }
 

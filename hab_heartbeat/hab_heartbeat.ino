@@ -8,6 +8,7 @@
 
   Considerations:
   - Count quick, repetitive pulses to read state of Arduino Mega
+  - HEARTBEAT LED OUTPUT CAUSES VOLTAGE DROP IN GPRS!!!!
 */
 
 #include <avr/wdt.h>
@@ -17,7 +18,7 @@
 const int programReadyPin = 2;
 const int heartbeatInputPin = 3;
 const int resetPin = 4;
-const int heartbeatLED = 13;
+//const int heartbeatLED = 13;
 
 void watchdogSetup() {
   cli();
@@ -31,7 +32,7 @@ void setup() {
   watchdogSetup();
 
   pinMode(resetPin, OUTPUT); digitalWrite(resetPin, HIGH);
-  pinMode(heartbeatLED, OUTPUT); digitalWrite(heartbeatLED, LOW);
+  //pinMode(heartbeatLED, OUTPUT); digitalWrite(heartbeatLED, LOW);
   pinMode(programReadyPin, INPUT_PULLUP);
   pinMode(heartbeatInputPin, INPUT_PULLUP);
 
@@ -47,22 +48,22 @@ void loop() {
 
   while ((millis() - startTime) < 10000) {
     if (digitalRead(programReadyPin) == LOW) {
-      digitalWrite(heartbeatLED, LOW);
+      //digitalWrite(heartbeatLED, LOW);
       while (digitalRead(programReadyPin) == LOW) {
         wdt_reset();
         delay(10);
       }
-      digitalWrite(heartbeatLED, HIGH);
+      //digitalWrite(heartbeatLED, HIGH);
       startTime = millis();
     }
     if (digitalRead(heartbeatInputPin) == HIGH) {
       startTime = millis();
-      for (int x = 0; x < 2; x++) {
+      /*for (int x = 0; x < 2; x++) {
         digitalWrite(heartbeatLED, LOW);
         delay(100);
         digitalWrite(heartbeatLED, HIGH);
         delay(100);
-      }
+        }*/
     }
     wdt_reset();
     delay(10);
@@ -88,5 +89,5 @@ void triggerReset(bool waitOnly) {
     if (digitalRead(programReadyPin) == LOW) startTime = millis();
   }
   //Serial.println("received.");
-  digitalWrite(heartbeatLED, HIGH);
+  //digitalWrite(heartbeatLED, HIGH);
 }
