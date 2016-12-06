@@ -27,6 +27,8 @@ habSerial = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
 
 captureInterval = 30
 takeoffBreakTime = 600
+peakBreakTime = 900
+landingBreakTime = 7200
 
 camPi = 'rpi'
 camDown = 'down'
@@ -149,7 +151,7 @@ def peak_capture():
             capture_photo(camDown)
             sleep (30)
         startTime = timer()
-        if (startTime - startTimeStatic) > takeoffBreakTime:
+        if (startTime - startTimeStatic) > peakBreakTime:
             break
 
 
@@ -175,7 +177,7 @@ def landing_capture():
             capture_photo(camUp)
             sleep (10)
         startTime = timer()
-        if (startTime - startTimeStatic) > takeoffBreakTime:
+        if (startTime - startTimeStatic) > landingBreakTime:
             break
 
 

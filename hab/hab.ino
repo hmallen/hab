@@ -41,6 +41,7 @@
   2 --> Landing phase
 
   TO DO:
+  - Determine pressure value to trigger peak capture (Reference press vs. alt table & balloon data)
   - Create test interrupt functions for pins 44-47 (Trigger fake alt/checkChange()/etc values)
   -- TEST INPUT VALUES FOR PIN (i.e. INPUT_PULLUP STATE @ 1/0)
   - TEST ARDUINO-->RPI SERIAL COMMUNICATION TRIGGERS
@@ -114,6 +115,7 @@
 #define LAUNCHCAPTURETHRESHOLD 1000.0
 #define PEAKCAPTURETHRESHOLD 500.0  // NEED TO CHANGE!!!!
 #define LANDINGCAPTURETHRESHOLD 3000.0
+#define PHOTODEPLOYTIME 240
 
 //#define DAYLIGHTSAVINGS
 
@@ -143,6 +145,7 @@ const int buzzerRelay = 6;
 const int relayPin4 = 7;
 const int rttyTxPin = 10;
 const int dsTempPin = 11;
+const int photoDeployPin = 12;
 const int smsPowerPin = 22;
 const int gpsPpsPin = 23;
 const int programStartPin = 24;
@@ -205,6 +208,7 @@ bool launchCapture = false;
 bool peakCapture = false;
 bool landingCapture = false;
 bool resetHandler = false;
+unsigned long photoDeployStart;
 
 // Old values to process with checkChange() function
 float gpsLatLast, gpsLngLast, gpsAltLast, ms5607PressLast, dofAltLast;
@@ -465,7 +469,9 @@ void setup() {
   pinMode(buzzerRelay, OUTPUT);
   digitalWrite(buzzerRelay, LOW);
   pinMode(debugLED, OUTPUT);
-  pinMode(debugLED, HIGH);
+  digitalWrite(debugLED, HIGH);
+  pinMode(photoDeployPin, OUTPUT);
+  digitalWrite(photoDeployPin, HIGH);
 
   pinMode(debugCamPin, INPUT_PULLUP);
   pinMode(debugModePin, INPUT_PULLUP);
@@ -1208,6 +1214,8 @@ void checkChange() {
       if (!debugCamState) debugBlink();
       if (dofPressure < PEAKCAPTURETHRESHOLD || !debugCamState) {
         Serial.println("$2");
+        digitalWrite(photoDeployPin, LOW);
+        photoDeployStart = millis();
         peakCapture = true;
         resetHandler = true;
       }
@@ -1230,6 +1238,10 @@ void checkChange() {
       Serial.print(" = ");
       Serial.println(ms5607PressChange);
     }
+  }
+
+  if (peakCapture && !descentPhase && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
+    digitalWrite(photoDeployPin, HIGH);
   }
 
   bool debugModeState = digitalRead(debugModePin);
