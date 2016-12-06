@@ -5,7 +5,7 @@ Servo selfieServo;
 int pos = 20;
 const int posInitial = pos;
 
-const int servoPin = 12;
+const int servoPin = 13;
 
 void setup() {
   Serial.begin(115200);
