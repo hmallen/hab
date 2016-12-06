@@ -139,9 +139,9 @@ bool debugCamState, debugModeState, debugHeaterState;
 const int chipSelect = SS;
 const int shtData = 2;
 const int shtClock = 3;
-const int gasRelay = 4;  // Gas sensors
+const int buzzerRelay = 4;
 const int heaterRelay = 5;  // Internal payload heater
-const int buzzerRelay = 6;
+const int gasRelay = 6;  // Gas sensors
 const int relayPin4 = 7;
 const int rttyTxPin = 10;
 const int dsTempPin = 11;
