@@ -6,7 +6,11 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("RELAY #4 ACTIVATED");
+  digitalWrite(5, HIGH);
+  while (true) {
+    ;
+  }
+  /*Serial.println("RELAY #4 ACTIVATED");
   digitalWrite(4, HIGH);
   delay(5000);
   Serial.println("RELAY #3 ACTIVATED");
@@ -15,6 +19,6 @@ void loop() {
   Serial.println("RELAY #2 ACTIVATED");
   digitalWrite(5, LOW); digitalWrite(6, HIGH);
   delay(5000);
-  digitalWrite(6, LOW);
+  digitalWrite(6, LOW);*/
 }
 
