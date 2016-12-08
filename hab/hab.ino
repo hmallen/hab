@@ -41,6 +41,8 @@
   2 --> Landing phase
 
   TO DO:
+  - Determine if 10K resistor b/w DHT11 pin 2 (data) & pin 1 (power) is necessary
+  - Handling of gas sensor logging after sensor shut-off
   - Determine pressure value to trigger peak capture (Reference press vs. alt table & balloon data)
   - Create test interrupt functions for pins 44-47 (Trigger fake alt/checkChange()/etc values)
   -- TEST INPUT VALUES FOR PIN (i.e. INPUT_PULLUP STATE @ 1/0)
@@ -87,11 +89,12 @@
 #include <Adafruit_BMP085_U.h>
 #include <Adafruit_L3GD20_U.h>
 #include <Adafruit_10DOF.h>
+#include <DHT.h>
 #include <EEPROM.h>
 #include <MS5xxx.h>
 #include <OneWire.h>
 #include <SdFat.h>
-#include <SHT1x.h>
+//#include <SHT1x.h>
 #include <SPI.h>
 #include <TimeLib.h>
 #include <TinyGPS++.h>
@@ -137,8 +140,9 @@ bool debugCamState, debugModeState, debugHeaterState;
 
 // Digital Pins
 const int chipSelect = SS;
-const int shtData = 2;
-const int shtClock = 3;
+//const int shtData = 2;
+//const int shtClock = 3;
+const int dhtPin = 2;
 const int buzzerRelay = 4;
 const int heaterRelay = 5;  // Internal payload heater
 const int gasRelay = 6;  // Gas sensors
@@ -198,7 +202,8 @@ float gasValues[] = {
 float gasValuesLast[] = {
   0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 };
-float shtTemp, shtHumidity;
+//float shtTemp, shtHumidity;
+int dhtTemp, dhtHumidity;
 float lightVal;
 unsigned long buzzerStart;
 float dsTemp;
@@ -237,17 +242,20 @@ Adafruit_L3GD20_Unified       gyro  = Adafruit_L3GD20_Unified(20);
 Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
 Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
 MS5xxx ms5607(&Wire);
-SHT1x sht(shtData, shtClock);
+//SHT1x sht(shtData, shtClock);
+DHT dht(dhtPin, DHT11);
 TinyGPSPlus gps;
 OneWire ds(dsTempPin);
 
 // Data validation variables
-bool dofValid, ms5607Valid, gpsValid, gasValid, shtValid, lightValid;
+//bool dofValid, ms5607Valid, gpsValid, gasValid, shtValid, lightValid;
+bool dofValid, ms5607Valid, gpsValid, gasValid, dhtValid, lightValid;
 int ada1604Failures = 0;
 int gpsFailures = 0;
 int ms5607Failures = 0;
 int gasFailures = 0;
-int shtFailures = 0;
+//int shtFailures = 0;
+int dhtFailures = 0;
 int lightFailures = 0;
 
 void initSensors() {
@@ -289,7 +297,7 @@ void initSensors() {
     Serial.println("success.");
     Serial.print(" - MS5607...");
   }
-  if (ms5607.connect()) {
+  if (!ms5607.connect()) {
     if (!setupComplete) startupFailure();
     else if (!debugMode) {
       char debugString[] = "No MS5607 detected.";
@@ -299,15 +307,43 @@ void initSensors() {
   }
   if (debugMode) {
     Serial.println("success.");
-    Serial.print(" - SHT11...");
+    //Serial.print(" - SHT11...");
+    Serial.print(" - DHT11...");
   }
-  for (int x = 0; x < 3; x++) {
-    float initShtTempC = sht.readTemperatureC();
-    delay(100);
-    float initShtTempF = sht.readTemperatureF();
-    delay(100);
-    float initShtHumidity = sht.readHumidity();
-    delay(100);
+
+  dht.begin();
+  delay(2000);
+  float t = dht.readTemperature();
+  delay(500);
+  float h = dht.readHumidity();
+
+  if (isnan(t) || isnan(h)) {
+    if (!setupComplete) startupFailure();
+    else if (!debugMode) {
+      char debugString[] = "No DHT11 detected.";
+      logDebug(debugString);
+    }
+  }
+  else {
+    for (int x = 0; x < 5; ) {
+      /*float initShtTempC = sht.readTemperatureC();
+        delay(100);
+        float initShtTempF = sht.readTemperatureF();
+        delay(100);
+        float initShtHumidity = sht.readHumidity();
+        delay(100);*/
+
+      delay(2000);
+      t = dht.readTemperature();
+      delay(500);
+      h = dht.readHumidity();
+
+      if (!isnan(t) || !isnan(h)) x++;
+      else {
+        dhtFailures++;
+        if (debugMode) Serial.print("DHT read failed...");
+      }
+    }
   }
   if (debugMode) Serial.println("success.");
 }
@@ -800,8 +836,8 @@ void loop() {
       }
     }
 
-    shtValid = readSht();
-    if (!readSht()) {
+    /*shtValid = readSht();
+      if (!readSht()) {
       shtFailures++;
       if (debugMode) {
         Serial.print("Failed to read SHT11. Count=");
@@ -816,10 +852,27 @@ void loop() {
         strcat(debugChar, shtFailuresChar);
         logDebug(debugChar);
       }
+      }*/
+    dhtValid = readDht();
+    if (!dhtValid) {
+      dhtFailures++;
+      if (debugMode) {
+        Serial.print("Failed to read DHT11. Count=");
+        Serial.println(dhtFailures);
+      }
+      else {
+        char debugChar[64];
+        char dhtFailuresChar[6];
+        char debugPrefix[] = "Failed to read DHT11. Count=";
+        sprintf(debugChar, debugPrefix);
+        sprintf(dhtFailuresChar, "%i", dhtFailures);
+        strcat(debugChar, dhtFailuresChar);
+        logDebug(debugChar);
+      }
     }
 
     lightValid = readLight();
-    if (!readLight()) {
+    if (!lightValid) {
       lightFailures++;
       if (debugMode) {
         Serial.print("Failed to read light sensor. Count=");
@@ -862,7 +915,7 @@ void loop() {
   }
 
   gpsValid = readGps();
-  if (!readGps()) {
+  if (!gpsValid) {
     gpsFailures++;
     if (debugMode) {
       Serial.print("Failed to read GPS. Count=");
@@ -1093,11 +1146,20 @@ bool readGas() {
   else return false;
 }
 
-bool readSht() {
+/*bool readSht() {
   shtTemp = sht.readTemperatureC();
   shtHumidity = sht.readHumidity();
 
   if (-100.0 <= shtTemp <= 100.0 && 0.0 <= shtHumidity <= 100.0) return true;
+  else return false;
+  }*/
+
+bool readDht() {
+  dhtTemp = dht.readTemperature();
+  delay(250);
+  dhtHumidity = dht.readHumidity();
+
+  if (!isnan(dhtTemp) && !isnan(dhtHumidity)) return true;
   else return false;
 }
 
@@ -1349,7 +1411,7 @@ void checkChange() {
   ms5607PressLast = ms5607Press;
 }
 
-void logData(char * logType) {
+void logData(char *logType) {
   // GET RID OF SD.ERRORHALT() TO PREVENT PROGRAM FROM STALLING
   if (logType == "dof") {
     if (!logFile.open(dof_log_file, O_RDWR | O_CREAT | O_AT_END)) {
@@ -1426,11 +1488,14 @@ void logData(char * logType) {
       logFile.print(gasValues[x]);
       logFile.print(",");
     }
-    logFile.print(shtValid);
+    //logFile.print(shtValid);
+    logFile.print(dhtValid);
     logFile.print(",");
-    logFile.print(shtTemp);
+    //logFile.print(shtTemp);
+    logFile.print(dhtTemp);
     logFile.print(",");
-    logFile.print(shtHumidity);
+    //logFile.print(shtHumidity);
+    logFile.print(dhtHumidity);
     logFile.print(",");
     logFile.println(lightVal);
   }
@@ -1488,7 +1553,7 @@ void logData(char * logType) {
   logFile.close();
 }
 
-void logDebug(char * dataString) {
+void logDebug(char *dataString) {
   // GET RID OF SD.ERRORHALT() TO PREVENT PROGRAM FROM STALLING
   if (!logFile.open(debug_log_file, O_RDWR | O_CREAT | O_AT_END)) {
     if (debugMode) sd.errorHalt("Opening debug log for write failed.");
@@ -1555,10 +1620,15 @@ void debugAuxPrint() {
     Serial.print(",");
   }
   Serial.println(gasValues[8]);
-  Serial.print("SHT11: ");
-  Serial.print(shtTemp);
+  //Serial.print("SHT11: ");
+  //Serial.print(shtTemp);
+  //Serial.print("C, ");
+  //Serial.print(shtHumidity);
+  //Serial.println("%RH");
+  Serial.print("DHT11: ");
+  Serial.print(dhtTemp);
   Serial.print("C, ");
-  Serial.print(shtHumidity);
+  Serial.print(dhtHumidity);
   Serial.println("%RH");
   Serial.print("Light: ");
   Serial.print(lightVal);
@@ -1810,7 +1880,9 @@ void rttyProcessTx() {
   char gpsCourseChar[10];
   char dofAltChar[10];
   char dofTempChar[10];
-  char shtTempChar[10];
+  //char shtTempChar[10];
+  char dhtTempChar[10];
+  char dhtHumidityChar[10];
   char commaChar[] = ",";
 
   sprintf(rttyTxString, callsignHeader);
@@ -1838,8 +1910,15 @@ void rttyProcessTx() {
   dtostrf(dofTemp, 2, 2, dofTempChar);
   strcat(rttyTxString, dofTempChar);
   strcat(rttyTxString, commaChar);
-  dtostrf(shtTemp, 2, 2, shtTempChar);
-  strcat(rttyTxString, shtTempChar);
+  //dtostrf(shtTemp, 2, 2, shtTempChar);
+  //strcat(rttyTxString, shtTempChar);
+  //dtostrf(dhtTemp, 2, 2, dhtTempChar);
+  sprintf(dhtTempChar, "%i", dhtTemp);
+  strcat(rttyTxString, dhtTempChar);
+  strcat(rttyTxString, commaChar);
+  sprintf(dhtHumidityChar, "%i", dhtHumidity);
+  strcat(rttyTxString, dhtHumidityChar);
+  strcat(rttyTxString, commaChar);
 
   unsigned int CHECKSUM = rttyCRC16Checksum(rttyTxString);
   char checksum_str[6];
