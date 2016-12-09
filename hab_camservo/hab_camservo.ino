@@ -6,11 +6,11 @@
 
 const bool debugMode = true;
 
-const int controlInput = 8;
-const int servoPin = 9;
+const int servoPin = 2;
+const int controlInput = 3;
 
 int servoPositionOut = 20;
-int servoPositionIn = 110; // Need to test to obtain proper value
+int servoPositionIn = 80; // Need to test to obtain proper value
 
 Servo camServo;
 
