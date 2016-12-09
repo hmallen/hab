@@ -41,7 +41,7 @@
   2 --> Landing phase
 
   TO DO:
-  - Determine if 10K resistor b/w DHT11 pin 2 (data) & pin 1 (power) is necessary
+  - On SMS startup, input current SLP to provide altimeter offset????
   - Handling of gas sensor logging after sensor shut-off
   - Determine pressure value to trigger peak capture (Reference press vs. alt table & balloon data)
   - Create test interrupt functions for pins 44-47 (Trigger fake alt/checkChange()/etc values)
