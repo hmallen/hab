@@ -6,20 +6,17 @@
 
 const bool debugMode = true;
 
-<<<<<<< HEAD
-const int servoPin = 2;
-const int controlInput = 3;
-=======
-const int controlInput = 2;
-const int servoPin = 3;
->>>>>>> eebd1c6c00a666498e8dce801458344e7e3e54ca
+const int controlInput = 8;
+const int servoPin = 9;
+const int lowPin = 10;
 
 int servoPositionOut = 20;
-int servoPositionIn = 80; // Need to test to obtain proper value
+int servoPositionIn = 110; // Need to test to obtain proper value
 
 Servo camServo;
 
 void setup() {
+  pinMode(lowPin, OUTPUT); digitalWrite(lowPin, LOW);
   pinMode(controlInput, INPUT_PULLUP);
   camServo.attach(servoPin);
 
