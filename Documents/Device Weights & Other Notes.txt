@@ -1,0 +1,10 @@
+Icarus Bottom + 2 x 10000mAh Batts - 412.8g
+Icarus Middle (No batts) - 
+Icarus Top (No gas sensors) - 267.72g
+8 x 18650 Batts - 365.94g
+6 x Gas sensors - 39.26g
+USB Cable (RPi to Arduino Mega) - 
+
+W/O Icarus Middle & USB Cable --> 1085.72g
+
+NEED TO BUY ANOTHER WEBCAM
