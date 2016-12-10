@@ -7,6 +7,12 @@ MS5xxx ms5607(&Wire);
 
 void setup() {
   Serial.begin(115200);
+
+  if (sensor.connect() > 0) {
+    Serial.println("Error connecting...");
+    delay(500);
+    setup();
+  }
 }
 
 void loop() {
