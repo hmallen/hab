@@ -41,6 +41,8 @@
   2 --> Landing phase
 
   TO DO:
+  - Add DS1820B data validity check to prevent accidental relay tripr
+  -- Also add startup check function (i.e. In initSensors())
   - On SMS startup, input current SLP to provide altimeter offset????
   - Handling of gas sensor logging after sensor shut-off
   - Determine pressure value to trigger peak capture (Reference press vs. alt table & balloon data)
@@ -248,8 +250,8 @@ TinyGPSPlus gps;
 OneWire ds(dsTempPin);
 
 // Data validation variables
-//bool dofValid, ms5607Valid, gpsValid, gasValid, shtValid, lightValid;
-bool dofValid, ms5607Valid, gpsValid, gasValid, dhtValid, lightValid;
+//bool dofValid, ms5607Valid, gpsValid, gasValid, shtValid, lightValid, dsValid;
+bool dofValid, ms5607Valid, gpsValid, gasValid, dhtValid, lightValid, dsValid;
 int ada1604Failures = 0;
 int gpsFailures = 0;
 int ms5607Failures = 0;
@@ -257,6 +259,7 @@ int gasFailures = 0;
 //int shtFailures = 0;
 int dhtFailures = 0;
 int lightFailures = 0;
+int dsFailures = 0;
 
 void initSensors() {
   // Adafruit 1604
@@ -309,7 +312,7 @@ void initSensors() {
     Serial.println("success.");
     Serial.print(" - MS5607...");
   }
-  if (!ms5607.connect()) {
+  if (ms5607.connect() > 0) {
     if (!setupComplete) {
       if (debugMode) Serial.println("failed.");
       startupFailure();
@@ -906,6 +909,25 @@ void loop() {
         logDebug(debugChar);
       }
     }
+
+    dsValid = readDs();
+    if (!dsValid) {
+      dsFailures++;
+      if (debugMode) {
+        Serial.print("Failed to read DS18B20. Count=");
+        Serial.println(dsFailures);
+      }
+      else {
+        char debugChar[64];
+        char dsFailuresChar[6];
+        char debugPrefix[] = "Failed to read DS18B20. Count=";
+        sprintf(debugChar, debugPrefix);
+        sprintf(dsFailuresChar, "%i", dsFailures);
+        strcat(debugChar, dsFailuresChar);
+        logDebug(debugChar);
+      }
+    }
+
     if (debugMode) Serial.print("Aux Loop #: ");
     Serial.println(auxLoopCount);
 
@@ -1190,7 +1212,6 @@ bool readLight() {
 bool readDs() {
   byte data[12];
   byte addr[8];
-  float dsTemp;
 
   if (!ds.search(addr)) {
     ds.reset_search();
@@ -1202,6 +1223,8 @@ bool readDs() {
     //sprintf(debugString, "DS18B20 CRC not valid.");
     char debugString[] = "DS18B20 CRC not valid.";
     logDebug(debugString);
+    dsTemp = 0.0;
+    return false;
   }
 
   ds.reset();
@@ -1241,6 +1264,7 @@ bool readDs() {
     //// default is 12 bit resolution, 750 ms conversion time
   }
   dsTemp = (float)raw / 16.0;
+  return true;
 }
 
 void checkChange() {
@@ -1253,28 +1277,31 @@ void checkChange() {
   debugModeState = digitalRead(debugModePin);
   debugHeaterState = digitalRead(debugHeaterPin);
 
-  if (dsTemp <= HEATERTRIGGERTEMP && !heaterStatus || !debugHeaterState && !heaterStatus) {
-    digitalWrite(heaterRelay, HIGH);
-    heaterStatus = true;
-    char debugChar[64];
-    char debugPrefix[] = "Heater activated @ ";
-    char dofTempChar[6];
-    dtostrf(dofTemp, 2, 2, dofTempChar);
-    sprintf(debugChar, debugPrefix);
-    strcat(debugChar, dofTempChar);
-    logDebug(debugChar);
+  if (!landingPhase) {
+    if (dsTemp < HEATERTRIGGERTEMP && !heaterStatus || !debugHeaterState && !heaterStatus) {
+      digitalWrite(heaterRelay, HIGH);
+      heaterStatus = true;
+      char debugChar[64];
+      char debugPrefix[] = "Heater activated @ ";
+      char dofTempChar[6];
+      dtostrf(dofTemp, 2, 2, dofTempChar);
+      sprintf(debugChar, debugPrefix);
+      strcat(debugChar, dofTempChar);
+      logDebug(debugChar);
+    }
+    else if (dsTemp >= HEATERTRIGGERTEMP && heaterStatus || !debugHeaterState && heaterStatus) {
+      digitalWrite(heaterRelay, LOW);
+      heaterStatus = false;
+      char debugChar[64];
+      char debugPrefix[] = "Heater inactivated @ ";
+      char dofTempChar[6];
+      dtostrf(dofTemp, 2, 2, dofTempChar);
+      sprintf(debugChar, debugPrefix);
+      strcat(debugChar, dofTempChar);
+      logDebug(debugChar);
+    }
   }
-  else if (dsTemp > HEATERTRIGGERTEMP && heaterStatus || !debugHeaterState && heaterStatus) {
-    digitalWrite(heaterRelay, LOW);
-    heaterStatus = false;
-    char debugChar[64];
-    char debugPrefix[] = "Heater inactivated @ ";
-    char dofTempChar[6];
-    dtostrf(dofTemp, 2, 2, dofTempChar);
-    sprintf(debugChar, debugPrefix);
-    strcat(debugChar, dofTempChar);
-    logDebug(debugChar);
-  }
+  else if (landingPhase && heaterStatus) digitalWrite(heaterRelay, LOW);
 
   if (!descentPhase) {
     if (!launchCapture) {
@@ -1515,7 +1542,9 @@ void logData(char *logType) {
     //logFile.print(shtHumidity);
     logFile.print(dhtHumidity);
     logFile.print(",");
-    logFile.println(lightVal);
+    logFile.print(lightVal);
+    logFile.print(",");
+    logFile.println(dsTemp);
   }
   else if (logType == "gps") {
     if (!logFile.open(gps_log_file, O_RDWR | O_CREAT | O_AT_END)) {
@@ -1651,6 +1680,9 @@ void debugAuxPrint() {
   Serial.print("Light: ");
   Serial.print(lightVal);
   Serial.println("%");
+  Serial.print("DS18B20: ");
+  Serial.print(dsTemp);
+  Serial.println("C");
 }
 
 void debugGpsPrint() {
