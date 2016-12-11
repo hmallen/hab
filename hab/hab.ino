@@ -41,6 +41,7 @@
   2 --> Landing phase
 
   TO DO:
+  - FIX SMS FUNCTIONS!!!!
   - Add DS1820B data validity check to prevent accidental relay tripr
   -- Also add startup check function (i.e. In initSensors())
   - On SMS startup, input current SLP to provide altimeter offset????
@@ -618,7 +619,7 @@ void setup() {
     initGps();
 
     if (debugMode) Serial.print("Powering GPRS...");
-    smsPower(true);
+    //smsPower(true);
     if (debugMode) {
       Serial.println("complete.");
       Serial.println();
