@@ -133,6 +133,7 @@ const int gpsTimeOffset = -5;
 // DEBUG
 const bool debugMode = true;
 const bool debugSmsOff = true;
+const bool debugHeaterOff = true;
 //const bool debugInputMode = true;
 const int debugLED = 13;
 const int debugCamPin = 44;
@@ -1277,28 +1278,30 @@ void checkChange() {
   debugModeState = digitalRead(debugModePin);
   debugHeaterState = digitalRead(debugHeaterPin);
 
-  if (!landingPhase) {
-    if (dsTemp < HEATERTRIGGERTEMP && !heaterStatus || !debugHeaterState && !heaterStatus) {
-      digitalWrite(heaterRelay, HIGH);
-      heaterStatus = true;
-      char debugChar[64];
-      char debugPrefix[] = "Heater activated @ ";
-      char dofTempChar[6];
-      dtostrf(dofTemp, 2, 2, dofTempChar);
-      sprintf(debugChar, debugPrefix);
-      strcat(debugChar, dofTempChar);
-      logDebug(debugChar);
-    }
-    else if (dsTemp >= HEATERTRIGGERTEMP && heaterStatus || !debugHeaterState && heaterStatus) {
-      digitalWrite(heaterRelay, LOW);
-      heaterStatus = false;
-      char debugChar[64];
-      char debugPrefix[] = "Heater inactivated @ ";
-      char dofTempChar[6];
-      dtostrf(dofTemp, 2, 2, dofTempChar);
-      sprintf(debugChar, debugPrefix);
-      strcat(debugChar, dofTempChar);
-      logDebug(debugChar);
+  if (!debugHeaterOff) {
+    if (!landingPhase) {
+      if (dsTemp < HEATERTRIGGERTEMP && !heaterStatus || !debugHeaterState && !heaterStatus) {
+        digitalWrite(heaterRelay, HIGH);
+        heaterStatus = true;
+        char debugChar[64];
+        char debugPrefix[] = "Heater activated @ ";
+        char dofTempChar[6];
+        dtostrf(dofTemp, 2, 2, dofTempChar);
+        sprintf(debugChar, debugPrefix);
+        strcat(debugChar, dofTempChar);
+        logDebug(debugChar);
+      }
+      else if (dsTemp >= HEATERTRIGGERTEMP && heaterStatus || !debugHeaterState && heaterStatus) {
+        digitalWrite(heaterRelay, LOW);
+        heaterStatus = false;
+        char debugChar[64];
+        char debugPrefix[] = "Heater inactivated @ ";
+        char dofTempChar[6];
+        dtostrf(dofTemp, 2, 2, dofTempChar);
+        sprintf(debugChar, debugPrefix);
+        strcat(debugChar, dofTempChar);
+        logDebug(debugChar);
+      }
     }
   }
   else if (landingPhase && heaterStatus) digitalWrite(heaterRelay, LOW);
