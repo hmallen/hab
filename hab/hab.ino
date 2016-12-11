@@ -129,9 +129,9 @@ const int gpsTimeOffset = -5;
 #endif
 
 // DEBUG
-const bool debugMode = false;
-const bool debugSmsOff = false;
-const bool debugInputMode = true;
+const bool debugMode = true;
+const bool debugSmsOff = true;
+//const bool debugInputMode = true;
 const int debugLED = 13;
 const int debugCamPin = 44;
 const int debugModePin = 45;
@@ -262,7 +262,10 @@ void initSensors() {
   // Adafruit 1604
   if (debugMode) Serial.print(" - DOF...");
   if (!accel.begin()) {
-    if (!setupComplete) startupFailure();
+    if (!setupComplete) {
+      if (debugMode) Serial.println("failed.");
+      startupFailure();
+    }
     else if (!debugMode) {
       char debugString[] = "No LSM303 detected.";
       logDebug(debugString);
@@ -270,7 +273,10 @@ void initSensors() {
     else Serial.println("No LSM303 detected.");
   }
   if (!mag.begin()) {
-    if (!setupComplete) startupFailure();
+    if (!setupComplete) {
+      if (debugMode) Serial.println("failed.");
+      startupFailure();
+    }
     else if (!debugMode) {
       char debugString[] = "No LSM303 detected.";
       logDebug(debugString);
@@ -278,7 +284,10 @@ void initSensors() {
     else Serial.println("No LSM303 detected.");
   }
   if (!gyro.begin()) {
-    if (!setupComplete) startupFailure();
+    if (!setupComplete) {
+      if (debugMode) Serial.println("failed.");
+      startupFailure();
+    }
     else if (!debugMode) {
       char debugString[] = "No L3GD20 detected.";
       logDebug(debugString);
@@ -286,7 +295,10 @@ void initSensors() {
     else Serial.println("No L3GD20 detected.");
   }
   if (!bmp.begin()) {
-    if (!setupComplete) startupFailure();
+    if (!setupComplete) {
+      if (debugMode) Serial.println("failed.");
+      startupFailure();
+    }
     else if (!debugMode) {
       char debugString[] = "No BMP180 detected.";
       logDebug(debugString);
@@ -298,7 +310,10 @@ void initSensors() {
     Serial.print(" - MS5607...");
   }
   if (!ms5607.connect()) {
-    if (!setupComplete) startupFailure();
+    if (!setupComplete) {
+      if (debugMode) Serial.println("failed.");
+      startupFailure();
+    }
     else if (!debugMode) {
       char debugString[] = "No MS5607 detected.";
       logDebug(debugString);
@@ -318,7 +333,10 @@ void initSensors() {
   float h = dht.readHumidity();
 
   if (isnan(t) || isnan(h)) {
-    if (!setupComplete) startupFailure();
+    if (!setupComplete) {
+      if (debugMode) Serial.println("failed.");
+      startupFailure();
+    }
     else if (!debugMode) {
       char debugString[] = "No DHT11 detected.";
       logDebug(debugString);

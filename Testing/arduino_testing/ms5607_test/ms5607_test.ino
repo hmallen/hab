@@ -8,7 +8,7 @@ MS5xxx ms5607(&Wire);
 void setup() {
   Serial.begin(115200);
 
-  if (sensor.connect() > 0) {
+  if (ms5607.connect() > 0) {
     Serial.println("Error connecting...");
     delay(500);
     setup();
@@ -22,8 +22,6 @@ void loop() {
 
     ms5607Temp = ms5607.GetTemp() / 100.0;
     ms5607Press = ms5607.GetPres() / 100.0;
-
-    if ((-100.0 <= ms5607Temp <= 100.0) && (0.0 <= ms5607Press <= 1100.0)) return true;
 
     delay(100);
   }
