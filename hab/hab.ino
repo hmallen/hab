@@ -207,7 +207,7 @@ float gasValuesLast[] = {
   0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 };
 //float shtTemp, shtHumidity;
-int dhtTemp, dhtHumidity;
+float dhtTemp, dhtHumidity;
 float lightVal;
 unsigned long buzzerStart;
 float dsTemp;
@@ -247,7 +247,7 @@ Adafruit_LSM303_Mag_Unified   mag   = Adafruit_LSM303_Mag_Unified(30302);
 Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
 MS5xxx ms5607(&Wire);
 //SHT1x sht(shtData, shtClock);
-DHT dht(dhtPin, DHT11);
+DHT dht(dhtPin, DHT22);
 TinyGPSPlus gps;
 OneWire ds(dsTempPin);
 
@@ -1281,7 +1281,7 @@ void checkChange() {
 
   if (!debugHeaterOff) {
     if (!landingPhase) {
-      if (dsTemp < HEATERTRIGGERTEMP && !heaterStatus || !debugHeaterState && !heaterStatus) {
+      if (dsValid && dsTemp < HEATERTRIGGERTEMP && !heaterStatus || !debugHeaterState && !heaterStatus) {
         digitalWrite(heaterRelay, HIGH);
         heaterStatus = true;
         char debugChar[64];
@@ -1292,7 +1292,7 @@ void checkChange() {
         strcat(debugChar, dofTempChar);
         logDebug(debugChar);
       }
-      else if (dsTemp >= HEATERTRIGGERTEMP && heaterStatus || !debugHeaterState && heaterStatus) {
+      else if (dsValid && dsTemp >= HEATERTRIGGERTEMP && heaterStatus || !debugHeaterState && heaterStatus) {
         digitalWrite(heaterRelay, LOW);
         heaterStatus = false;
         char debugChar[64];
@@ -1934,7 +1934,6 @@ void rttyProcessTx() {
   char gpsCourseChar[10];
   char dofAltChar[10];
   char dofTempChar[10];
-  //char shtTempChar[10];
   char dhtTempChar[10];
   char dhtHumidityChar[10];
   char commaChar[] = ",";
@@ -1964,13 +1963,10 @@ void rttyProcessTx() {
   dtostrf(dofTemp, 2, 2, dofTempChar);
   strcat(rttyTxString, dofTempChar);
   strcat(rttyTxString, commaChar);
-  //dtostrf(shtTemp, 2, 2, shtTempChar);
-  //strcat(rttyTxString, shtTempChar);
-  //dtostrf(dhtTemp, 2, 2, dhtTempChar);
-  sprintf(dhtTempChar, "%i", dhtTemp);
+  dtostrf(dhtTemp, 2, 2, dhtTempChar);
   strcat(rttyTxString, dhtTempChar);
   strcat(rttyTxString, commaChar);
-  sprintf(dhtHumidityChar, "%i", dhtHumidity);
+  dtostrf(dhtHumidity, 2, 2, dhtHumidityChar);
   strcat(rttyTxString, dhtHumidityChar);
   strcat(rttyTxString, commaChar);
 
