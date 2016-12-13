@@ -73,14 +73,14 @@ def takeoff_capture():
 
 
 while True:
-    if habSerial.inWaiting() > 0:
-        while habSerial.inWaiting() > 0:
+    if habSerial.in_waiting > 0:
+        while habSerial.in_waiting > 0:
             habOutput = habSerial.readline()[:-2]
             if habOutput[0] == '$':
                 habCommand = serial_receive(habOutput)
                 print habCommand
                 if habCommand == '0':
-                    #serial_send('$0')
+                    serial_send('$0')
                     break
             else:
                 print habOutput
