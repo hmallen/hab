@@ -17,9 +17,7 @@
 #
 
 import datetime
-import picamera
 import serial
-import subprocess
 from time import sleep
 from timeit import default_timer as timer
 
@@ -29,11 +27,6 @@ captureInterval = 30
 takeoffBreakTime = 600
 peakBreakTime = 900
 landingBreakTime = 7200
-
-camPi = 'rpi'
-camDown = 'down'
-camUp = 'up'
-camera = picamera.PiCamera()
 
 
 def serial_receive(serialData):
