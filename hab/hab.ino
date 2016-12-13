@@ -41,7 +41,12 @@
   2 --> Landing phase
 
   TO DO:
-  - FIX SMS FUNCTIONS!!!!
+  - MUST FIND FUNCTION TO CONFIRM GPRS POWER TO RESTART IF NECESSARY!!!! ****
+  - CHECK RTTY BROADCAST ****
+  - CHECK BATTERY POWER FUNCTION ****
+  - INTEGRATE ARDUINO-->RPI COMMUNICATION ****
+  - Confirm that GPS coordinates are sent with highest precision (i.e. 6 floating point decimals)
+  - Add check and retry for MS5607 data validity (every so often a bad value appears)
   - Add DS1820B data validity check to prevent accidental relay tripr
   -- Also add startup check function (i.e. In initSensors())
   - On SMS startup, input current SLP to provide altimeter offset????
@@ -680,7 +685,10 @@ void setup() {
       readAda1604();
       if (abs(dofAlt - dofAltOffset) < 5.0) break;
     }
-    if (debugMode) Serial.println("complete.");
+    if (debugMode) {
+      Serial.println("complete.");
+      Serial.println();
+    }
 
     //smsPower(false);
 
@@ -1026,15 +1034,20 @@ void loop() {
     }
     }*/
 
-  //???? if (smsCommandText[0] != '\0') {
-  if (!isAlphaNumeric(smsCommandText[0])) {
-    /*Serial.print("smsCommandText: ");
+  // if (smsCommandText[0] != '\0') {
+  /*if (!isAlphaNumeric(smsCommandText[0])) {
+    Serial.print("smsCommandText: ");
       Serial.println(smsCommandText);
       Serial.println("PROGRAM HALTED.");
       while (true) {
       ;
       }
-      smsSendConfirmation();*/
+      smsSendConfirmation();
+    smsFlush();
+    }*/
+
+  if (isAlphaNumeric(smsCommandText[0])) {
+    smsSendConfirmation();
     smsFlush();
   }
 
@@ -1178,16 +1191,17 @@ bool readGps() {
 }
 
 bool readMS5607() {
-  for (int x = 0; x < 3; x++) {
+  for (int x = 0; x < 5; x++) {
     ms5607.ReadProm();
     ms5607.Readout();
 
     ms5607Temp = ms5607.GetTemp() / 100.0;
     ms5607Press = ms5607.GetPres() / 100.0;
 
-    if ((-100.0 <= ms5607Temp <= 100.0) && (0.0 <= ms5607Press <= 1100.0)) return true;
+    if ((-100.0 <= ms5607Temp <= 100.0) && (0.0 <= ms5607Press <= 1200.0)) return true;
+    else continue;
 
-    delay(100);
+    delay(500);
   }
   return false;
 }
@@ -1704,16 +1718,11 @@ void debugAuxPrint() {
   Serial.print(ms5607Temp);
   Serial.println("C");
   Serial.print("Gas Sensors: ");
-  for (int x = 0; x < 6; x++) {
+  for (int x = 0; x < 5; x++) {
     Serial.print(gasValues[x]);
     Serial.print(",");
   }
-  Serial.println(gasValues[8]);
-  //Serial.print("SHT11: ");
-  //Serial.print(shtTemp);
-  //Serial.print("C, ");
-  //Serial.print(shtHumidity);
-  //Serial.println("%RH");
+  Serial.println(gasValues[5]);
   Serial.print("DHT22: ");
   Serial.print(dhtTemp);
   Serial.print("C, ");
@@ -1842,14 +1851,19 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
     int smsCommand = 0;
 
     //if (smsMessage.length() == 1) smsCommand = smsMessage.toInt();
-    int messageLength = 0;
-    for (x = 0; x < sizeof(smsMessage); x++) {
+    /*int messageLength = 0;
+      for (x = 0; x < sizeof(smsMessage); x++) {
       if (isAlphaNumeric(smsMessage[x])) messageLength++;
-    }
-    if (messageLength == 1) smsCommand = int(smsMessage[0]);
-    else; // Send SMS stating invalid command received (to incoming number)
+      }
+      if (messageLength == 1) smsCommand = int(smsMessage[0]);
+      else; // Send SMS stating invalid command received (to incoming number)*/
 
-    // Some sort of "if data available, then proceed to switch case"
+    smsCommand = int(smsMessage[0]);
+    //if (debugMode) {
+    //Serial.print("smsCommand: ");
+    //Serial.println(smsCommand);
+    //}
+
     switch (smsCommand) {
       // LED
       case 49:  // ASCII character '1' = 49
@@ -1886,24 +1900,19 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
       // Buzzer
       case 51:  // ASCII character '3' = 51
         if (debugMode) Serial.print("SMS command #3 issued...");
-
         digitalWrite(buzzerRelay, HIGH);
-        if (debugMode) {
-          delay(1000);
-          digitalWrite(buzzerRelay, LOW);
-        }
-        else buzzerStart = millis();
+        buzzerStart = millis();
         break;
       default:
         if (debugMode) {
-          Serial.print("INVALID COMMAND: ");
+          Serial.print("INVALID COMMAND ISSUED: ");
           Serial.print(smsMessage);
         }
         break;
     }
 
-    if (smsCommand == 1) sprintf(smsCommandText, "LED");
-    else if (smsCommand == 3) sprintf(smsCommandText, "Buzzer");
+    if (smsCommand == 49) sprintf(smsCommandText, "LED");
+    else if (smsCommand == 51) sprintf(smsCommandText, "Buzzer");
 
     if (!debugMode) {
       char debugChar[64];
