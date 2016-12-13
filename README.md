@@ -40,10 +40,10 @@ Sensors:
 - MS5607 Barometer/Altimeter
 
 Relay Control:
-1 --> Pin 7 (Gas sensors)
-2 --> Pin 6 (Internal payload heater)
-3 --> Pin 5
-4 --> Pin 4
+- 1 --> Pin 7 (Gas sensors)
+- 2 --> Pin 6 (Internal payload heater)
+- 3 --> Pin 5
+- 4 --> Pin 4
 
 Gas Sensors:
 - MQ-2 --> A7
@@ -57,9 +57,9 @@ Gas Sensors:
 - MQ135 --> A15
 
 EEPROM Values:
-0 --> Setup complete
-1 --> Descent phase
-2 --> Landing phase
+- 0 --> Setup complete
+- 1 --> Descent phase
+- 2 --> Landing phase
 
 TO DO:
 - MUST FIND FUNCTION TO CONFIRM GPRS POWER TO RESTART IF NECESSARY!!!! ****
