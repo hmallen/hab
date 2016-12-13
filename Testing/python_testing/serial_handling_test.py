@@ -52,25 +52,29 @@ def takeoff_capture():
     # CONTINUE CAPTURING DOWN-FACING WEBCAM VIDEO UNTIL THRESHOLD ALTITUDE ACHEIVED
     startTime = timer()
     startTimeStatic = startTime
-    while True:
-        habOutput = habSerial.readline()[:-2]
-        if habOutput:
-            habCommand = serial_receive(habOutput)
-            print habCommand
-            if habCommand == '0':
-                break
+    continueCapture = True
+
+    while continueCapture is True:
         capture_video(camDown, 120)
         sleep(1)
         while (timer() - startTime) <= 120:
-            sleep(1)
+            if habSerial.inWaiting() > 0:
+                while habSerial.inWaiting() > 0:
+                    habOutput = habSerial.readline()[:-2]
+                    if habOutput:
+                        if habOutput[0] == '$':
+                            habCommand = serial_receive(habOutput)
+                            print habCommand
+                            if habCommand == '0':
+                                continueCapture = False
             capture_photo(camPi)
             sleep(1)
             capture_photo(camUp)
-            sleep (10)
+            sleep(10)
+
         startTime = timer()
         if (startTime - startTimeStatic) > takeoffBreakTime:
-            break
-
+            continueCapture = False
 
 while True:
     if habSerial.inWaiting() > 0:
