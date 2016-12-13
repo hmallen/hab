@@ -21,7 +21,7 @@ import serial
 from time import sleep
 from timeit import default_timer as timer
 
-habSerial = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+habSerial = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
 captureInterval = 30
 takeoffBreakTime = 600
@@ -73,17 +73,18 @@ def takeoff_capture():
 
 
 while True:
-    if habSerial.in_waiting > 0:
-        while habSerial.in_waiting > 0:
+    if habSerial.inWaiting() > 0:
+        while habSerial.inWaiting() > 0:
             habOutput = habSerial.readline()[:-2]
-            if habOutput[0] == '$':
-                habCommand = serial_receive(habOutput)
-                print habCommand
-                if habCommand == '0':
-                    serial_send('$0')
-                    break
-            else:
-                print habOutput
+            if habOutput:
+                if habOutput[0] == '$':
+                    habCommand = serial_receive(habOutput)
+                    print habCommand
+                    if habCommand == '0':
+                        serial_send('$0')
+                        break
+                else:
+                    print habOutput
 
 while True:
     startTime = timer()
