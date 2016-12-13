@@ -23,7 +23,7 @@ import subprocess
 from time import sleep
 from timeit import default_timer as timer
 
-habSerial = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
+habSerial = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
 captureInterval = 10
 takeoffBreakTime = 600
