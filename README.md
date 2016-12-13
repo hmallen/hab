@@ -1,7 +1,7 @@
 # High-Altitude Balloon
 
 TO DO:
-- Wire power: 1)RTTY 2)Buzzer 3)Relays
+- Wire power: 1) RTTY / 2) Buzzer / 3)Relays
 - Ensure that gas sensors receiving correct (5V) voltage [2.5V was measured after first battery test]
 - Weigh full payload package
 -- Determine hydrogen vs. helium w/ 600g balloon
