@@ -25,7 +25,7 @@ from timeit import default_timer as timer
 
 habSerial = serial.Serial('/dev/ttyUSB0', 115200, timeout=1)
 
-captureInterval = 30
+captureInterval = 10
 takeoffBreakTime = 600
 peakBreakTime = 900
 landingBreakTime = 7200
