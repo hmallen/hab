@@ -89,13 +89,18 @@ while True:
 while True:
     startTime = timer()
     while (timer() - startTime) < captureInterval:
-        habOutput = habSerial.readline()[:-2]
-        if habOutput:
-            habCommand = serial_receive(habOutput)
-            print habCommand
-            if habCommand == '1':
-                print 'takeoff_capture()'
-            elif habCommand == '2':
-                print 'peak_capture()'
-            elif habCommand == '3':
-                print 'landing_capture()'
+        if habSerial.inWaiting() > 0:
+            while habSerial.inWaiting() > 0:
+                habOutput = habSerial.readline()[:-2]
+                if habOutput:
+                    if habOutput[0] == '$':
+                        habCommand = serial_receive(habOutput)
+                        print habCommand
+                        if habCommand == '1':
+                            print 'takeoff_capture()'
+                        elif habCommand == '2':
+                            print 'peak_capture()'
+                        elif habCommand == '3':
+                            print 'landing_capture()'
+                    else:
+                        print habOutput
