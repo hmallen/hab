@@ -46,15 +46,15 @@ Relay Control:
 4 --> Pin 4
 
 Gas Sensors:
-MQ-2 --> A7
-MQ-3 --> A8
-MQ-4 --> A9
-MQ-5 --> A10
-MQ-6 --> A11
-MQ-7 --> A12
-MQ-8 --> A13
-MQ-9 --> A14
-MQ135 --> A15
+- MQ-2 --> A7
+- MQ-3 --> A8
+- MQ-4 --> A9
+- MQ-5 --> A10
+- MQ-6 --> A11
+- MQ-7 --> A12
+- MQ-8 --> A13
+- MQ-9 --> A14
+- MQ135 --> A15
 
 EEPROM Values:
 0 --> Setup complete
