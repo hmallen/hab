@@ -42,12 +42,10 @@
 
   TO DO:
   - MUST FIND FUNCTION TO CONFIRM GPRS POWER TO RESTART IF NECESSARY!!!! ****
-  - CHECK RTTY BROADCAST ****
-  - CHECK BATTERY POWER FUNCTION ****
   - INTEGRATE ARDUINO-->RPI COMMUNICATION ****
   - Confirm that GPS coordinates are sent with highest precision (i.e. 6 floating point decimals)
   - Add check and retry for MS5607 data validity (every so often a bad value appears)
-  - Add DS1820B data validity check to prevent accidental relay tripr
+  - Add DS1820B data validity check to prevent accidental relay trip
   -- Also add startup check function (i.e. In initSensors())
   - On SMS startup, input current SLP to provide altimeter offset????
   - Handling of gas sensor logging after sensor shut-off
