@@ -16,6 +16,7 @@ void loop() {
     String inputString = "";
     while (Serial.available()) {
       char c = Serial.read();
+      if (c == '\n' || c == '\r') break;
       inputString += c;
       delay(5);
     }

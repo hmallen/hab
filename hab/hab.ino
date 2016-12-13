@@ -136,7 +136,7 @@ const int gpsTimeOffset = -5;
 
 // DEBUG
 const bool debugMode = true;
-const bool debugSmsOff = false;
+const bool debugSmsOff = true;
 const bool debugHeaterOff = true;
 //const bool debugInputMode = true;
 const int debugLED = 13;
@@ -343,7 +343,7 @@ void initSensors() {
   if (isnan(t) || isnan(h)) {
     if (!setupComplete) {
       if (debugMode) Serial.println("failed.");
-      startupFailure();
+      //startupFailure();
     }
     else if (!debugMode) {
       char debugString[] = "No DHT22 detected.";
@@ -724,36 +724,37 @@ void setup() {
       delay(500);
     }
   }
-  if (!debugMode) {
-    Serial.println("$0");
-    if (!Serial.available()) {
-      while (!Serial.available()) {
-        ;
-      }
-    }
-    while (true) {
-      if (Serial.available()) {
-        char cameraInput[6];
-        int x = 0;
-        while (Serial.available()) {
-          char c = Serial.read();
-          cameraInput[x] = c;
-          x++;
-          delay(5);
-        }
-        cameraInput[x] = '\0';
-        if (cameraInput[0] == '$' && cameraInput[1] == '0') break;
-      }
+
+  Serial.println("$0");
+  //if (!debugMode) {
+  if (!Serial.available()) {
+    while (!Serial.available()) {
+      ;
     }
   }
-  else {
-    Serial.println("starting program.");
-    Serial.println();
-    Serial.println(F("-----------------"));
-    Serial.println(F("---- PROGRAM ----"));
-    Serial.println(F("-----------------"));
-    Serial.println();
+  while (true) {
+    if (Serial.available()) {
+      char cameraInput[6];
+      int x = 0;
+      while (Serial.available()) {
+        char c = Serial.read();
+        cameraInput[x] = c;
+        x++;
+        delay(5);
+      }
+      cameraInput[x] = '\0';
+      if (cameraInput[0] == '$' && cameraInput[1] == '0') break;
+    }
   }
+  //}
+  //else {
+  Serial.println("starting program.");
+  Serial.println();
+  Serial.println(F("-----------------"));
+  Serial.println(F("---- PROGRAM ----"));
+  Serial.println(F("-----------------"));
+  Serial.println();
+  //}
 
   EEPROM.update(0, 1);
   digitalWrite(programReadyPin, HIGH);
