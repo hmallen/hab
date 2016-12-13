@@ -105,7 +105,7 @@
 #include <Wire.h>
 
 // Definitions
-#define GPSHDOPTHRESHOLD 150  // Change to 120 for live conditions????
+#define GPSHDOPTHRESHOLD 200  // Change to 120 for live conditions????
 //#define GASSENSORWARMUP 300000  // Gas sensor warm-up time (ms)
 #define GASSENSORWARMUP 30000 // For field stress testing
 #define DOFDATAINTERVAL 500 // Update interval (ms) for Adafruit 1604 data
@@ -113,7 +113,7 @@
 #define GPSDATAINTERVAL 15000 // Update interval (ms) for GPS data updates
 #define SMSPOWERDELAY 8000  // Delay between power up and sending of commands to GPRS
 #define SERIALTIMEOUT 5000  // Time to wait for incoming GPRS serial data before time-out
-#define BAROALTCHANGETHRESHOLD 5.0  // Negative altitude change (m) from altimeters to signify real altitude decrease
+#define DOFALTCHANGETHRESHOLD 5.0  // Negative altitude change (m) from altimeters to signify real altitude decrease
 #define BAROPRESSCHANGETHRESHOLD 0.5 // Negative pressure change (hPa) from altimeters to signify real altitude decrease
 #define GPSCHANGETHRESHOLD 5.0 // Negative altitude change (m) from GPS to signify real altitude decrease
 #define HEATERTRIGGERTEMP 0.0  // Temperature (C) below which internal payload heater activated
@@ -133,7 +133,7 @@ const int gpsTimeOffset = -5;
 
 // DEBUG
 const bool debugMode = true;
-const bool debugSmsOff = true;
+const bool debugSmsOff = false;
 const bool debugHeaterOff = true;
 //const bool debugInputMode = true;
 const int debugLED = 13;
@@ -328,7 +328,7 @@ void initSensors() {
   if (debugMode) {
     Serial.println("success.");
     //Serial.print(" - SHT11...");
-    Serial.print(" - DHT11...");
+    Serial.print(" - DHT22...");
   }
 
   dht.begin();
@@ -343,7 +343,7 @@ void initSensors() {
       startupFailure();
     }
     else if (!debugMode) {
-      char debugString[] = "No DHT11 detected.";
+      char debugString[] = "No DHT22 detected.";
       logDebug(debugString);
     }
   }
@@ -411,6 +411,10 @@ void initGps() {
     while (gpsHdop >= GPSHDOPTHRESHOLD) {
       delay(1000);
       readGps();
+      if (debugMode) {
+        Serial.print("gpsHdop: ");
+        Serial.println(gpsHdop);
+      }
     }
     if (debugMode) {
       Serial.println("attained.");
@@ -480,6 +484,8 @@ void smsPower(bool powerState) {
 }
 
 void smsConfirmReady() {
+  smsFlush();
+
   char smsMessageRaw[128];
   while (!smsReadyReceived) {
     if (!Serial1.available()) {
@@ -619,11 +625,8 @@ void setup() {
     initGps();
 
     if (debugMode) Serial.print("Powering GPRS...");
-    //smsPower(true);
-    if (debugMode) {
-      Serial.println("complete.");
-      Serial.println();
-    }
+    smsPower(true);
+    if (debugMode) Serial.println("complete.");
 
     delay(SMSPOWERDELAY);
 
@@ -663,6 +666,7 @@ void setup() {
       smsConfirmReady();
       if (debugMode) Serial.println("received.");
     }
+    if (debugMode) Serial.println();
 
     while (true) {
       if (debugMode) Serial.print("Baselining launch site altitude for comparison...");
@@ -859,23 +863,6 @@ void loop() {
       }
     }
 
-    /*shtValid = readSht();
-      if (!readSht()) {
-      shtFailures++;
-      if (debugMode) {
-        Serial.print("Failed to read SHT11. Count=");
-        Serial.println(shtFailures);
-      }
-      else {
-        char debugChar[64];
-        char shtFailuresChar[6];
-        char debugPrefix[] = "Failed to read SHT11. Count=";
-        sprintf(debugChar, debugPrefix);
-        sprintf(shtFailuresChar, "%i", shtFailures);
-        strcat(debugChar, shtFailuresChar);
-        logDebug(debugChar);
-      }
-      }*/
     dhtValid = readDht();
     if (!dhtValid) {
       dhtFailures++;
@@ -951,7 +938,10 @@ void loop() {
 
     if (debugMode) Serial.print("Sending data via RTTY...");
     rttyProcessTx();
-    if (debugMode) Serial.println("complete.");
+    if (debugMode) {
+      Serial.println("complete.");
+      Serial.println();
+    }
 
     heartbeat();
   }
@@ -1010,6 +1000,7 @@ void loop() {
       x++;
       delay(5);
     }
+    smsMessageRaw[x] = '\0';
     if (debugMode) Serial.print("Processing GPRS data...");
     smsHandler(smsMessageRaw, true, false);
     if (debugMode) {
@@ -1017,10 +1008,38 @@ void loop() {
       Serial.println();
     }
   }
+  /*if (Serial1.available()) {
+    if (debugMode) Serial.println("Incoming GPRS serial data.");
+    char smsMessageRaw[128];
+    int x = 0;
+    while (Serial1.available()) {
+      char c = Serial1.read();
+      smsMessageRaw[x] = c;
+      x++;
+      delay(5);
+    }
+    if (debugMode) Serial.print("Processing GPRS data...");
+    smsHandler(smsMessageRaw, true, false);
+    if (debugMode) {
+      Serial.println("complete.");
+      Serial.println();
+    }
+    }*/
 
-  if (smsCommandText != "") smsSendConfirmation();
+  //???? if (smsCommandText[0] != '\0') {
+  if (!isAlphaNumeric(smsCommandText[0])) {
+    /*Serial.print("smsCommandText: ");
+      Serial.println(smsCommandText);
+      Serial.println("PROGRAM HALTED.");
+      while (true) {
+      ;
+      }
+      smsSendConfirmation();*/
+    smsFlush();
+  }
 
   if (loopCount == 1 && !descentPhase && !landingPhase) {
+    ms5607PressLast = ms5607Press;
     if (!debugSmsOff) {
       if (debugMode) {
         Serial.print("Sending SMS command menu...");
@@ -1212,61 +1231,68 @@ bool readLight() {
 }
 
 bool readDs() {
-  byte data[12];
-  byte addr[8];
+  bool dsReadCheck = false;
 
-  if (!ds.search(addr)) {
-    ds.reset_search();
-    delay(250);
-  }
+  for (int x = 0; x < 3; x++) {
+    byte data[12];
+    byte addr[8];
 
-  if (OneWire::crc8(addr, 7) != addr[7]) {
-    //char debugString[32];
-    //sprintf(debugString, "DS18B20 CRC not valid.");
-    char debugString[] = "DS18B20 CRC not valid.";
-    logDebug(debugString);
-    dsTemp = 0.0;
-    return false;
-  }
-
-  ds.reset();
-  ds.select(addr);
-  ds.write(0x44, 1);  // start conversion, with parasite power on at the end
-
-  delay(1000);  // maybe 750ms is enough, maybe not
-  // we might do a ds.depower() here, but the reset will take care of it.
-
-  ds.reset();
-  ds.select(addr);
-  ds.write(0xBE); // Read Scratchpad
-
-  for (byte i = 0; i < 9; i++) {  // we need 9 bytes
-    data[i] = ds.read();
-  }
-
-  // Convert the data to actual temperature
-  // because the result is a 16 bit signed integer, it should
-  // be stored to an "int16_t" type, which is always 16 bits
-  // even when compiled on a 32 bit processor.
-  byte type_s;
-  int16_t raw = (data[1] << 8) | data[0];
-  if (type_s) {
-    raw = raw << 3; // 9 bit resolution default
-    if (data[7] == 0x10) {
-      // "count remain" gives full 12 bit resolution
-      raw = (raw & 0xFFF0) + 12 - data[6];
+    if (!ds.search(addr)) {
+      ds.reset_search();
+      delay(250);
     }
+
+    if (OneWire::crc8(addr, 7) != addr[7]) {
+      //char debugString[32];
+      //sprintf(debugString, "DS18B20 CRC not valid.");
+      char debugString[] = "DS18B20 CRC not valid.";
+      logDebug(debugString);
+      dsTemp = 0.0;
+      continue;
+    }
+
+    ds.reset();
+    ds.select(addr);
+    ds.write(0x44, 1);  // start conversion, with parasite power on at the end
+
+    delay(1000);  // maybe 750ms is enough, maybe not
+    // we might do a ds.depower() here, but the reset will take care of it.
+
+    ds.reset();
+    ds.select(addr);
+    ds.write(0xBE); // Read Scratchpad
+
+    for (byte i = 0; i < 9; i++) {  // we need 9 bytes
+      data[i] = ds.read();
+    }
+
+    // Convert the data to actual temperature
+    // because the result is a 16 bit signed integer, it should
+    // be stored to an "int16_t" type, which is always 16 bits
+    // even when compiled on a 32 bit processor.
+    byte type_s;
+    int16_t raw = (data[1] << 8) | data[0];
+    if (type_s) {
+      raw = raw << 3; // 9 bit resolution default
+      if (data[7] == 0x10) {
+        // "count remain" gives full 12 bit resolution
+        raw = (raw & 0xFFF0) + 12 - data[6];
+      }
+    }
+    else {
+      byte cfg = (data[4] & 0x60);
+      // at lower res, the low bits are undefined, so let's zero them
+      if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
+      else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
+      else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
+      //// default is 12 bit resolution, 750 ms conversion time
+    }
+    dsTemp = (float)raw / 16.0;
+    dsReadCheck = true;
+    break;
   }
-  else {
-    byte cfg = (data[4] & 0x60);
-    // at lower res, the low bits are undefined, so let's zero them
-    if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
-    else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
-    else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
-    //// default is 12 bit resolution, 750 ms conversion time
-  }
-  dsTemp = (float)raw / 16.0;
-  return true;
+  if (dsReadCheck) return true;
+  else return false;
 }
 
 void checkChange() {
@@ -1329,6 +1355,7 @@ void checkChange() {
         photoDeployStart = millis();
         peakCapture = true;
         resetHandler = true;
+        if (debugMode) Serial.println("PEAK CAPTURE TRIGGERED.");
       }
     }
   }
@@ -1337,7 +1364,16 @@ void checkChange() {
   else if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges++;
 
   if (dofAltChange <= 0.0) dofChanges = 0;
-  else if (dofAltChange > BAROALTCHANGETHRESHOLD) dofChanges++;
+  else if (dofAltChange > DOFALTCHANGETHRESHOLD) {
+    dofChanges++;
+    if (debugMode) {
+      Serial.print(dofAlt);
+      Serial.print(" - ");
+      Serial.print(dofAltLast);
+      Serial.print(" = ");
+      Serial.println(dofAltChange);
+    }
+  }
 
   if (ms5607PressChange <= 0.0) ms5607Changes = 0;
   else if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) {
@@ -1366,6 +1402,7 @@ void checkChange() {
   else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
 
   if (descentPhase) {
+    if (debugMode) Serial.println("DESCENT PHASE TRIGGERED.");
     Serial.println("$0");
     resetHandler = false;
 
@@ -1388,7 +1425,7 @@ void checkChange() {
     digitalWrite(gasRelay, LOW);  // Shut-off gas sensors to save power
   }
 
-  else if (!landingPhase) {
+  else if (descentPhase && !landingPhase) {
     if (!landingCapture) {
       debugCamState = digitalRead(debugCamPin);
       if (!debugCamState) debugBlink();
@@ -1402,8 +1439,8 @@ void checkChange() {
     if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges = 0;
     else if (gpsAltChange <= GPSCHANGETHRESHOLD) gpsChanges++;
 
-    if (dofAltChange > BAROALTCHANGETHRESHOLD) dofChanges = 0;
-    else if (dofAltChange <= BAROALTCHANGETHRESHOLD) dofChanges++;
+    if (dofAltChange > DOFALTCHANGETHRESHOLD) dofChanges = 0;
+    else if (dofAltChange <= DOFALTCHANGETHRESHOLD) dofChanges++;
 
     if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) ms5607Changes = 0;
     else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
@@ -1419,6 +1456,7 @@ void checkChange() {
     else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) landingPhase = true;
 
     if (landingPhase) {
+      if (debugMode) Serial.println("LANDING PHASE TRIGGERED.");
       Serial.println("$0");
       resetHandler = false;
 
@@ -1676,7 +1714,7 @@ void debugAuxPrint() {
   //Serial.print("C, ");
   //Serial.print(shtHumidity);
   //Serial.println("%RH");
-  Serial.print("DHT11: ");
+  Serial.print("DHT22: ");
   Serial.print(dhtTemp);
   Serial.print("C, ");
   Serial.print(dhtHumidity);
@@ -1721,29 +1759,35 @@ void debugGpsPrint() {
 }
 
 void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
+  //Serial.print("smsMessageRaw: ");
+  //Serial.println(smsMessageRaw);
+
   char smsRecNumber[16];
   char smsMessage[16];
 
   int smsMessageRawSize = sizeof(smsMessageRaw);
   int numIndex, smsIndex;
-  for (int x = 0; ; x++) {
+  int x;
+  for (x = 0   ; ; x++) {
     char c = smsMessageRaw[x];
     if (c == '"') {
       numIndex = x + 3;
+      //Serial.println(numIndex);
       break;
     }
   }
-  for (int x = smsMessageRawSize; ; x--) {
+  x++;
+  //for (int x = smsMessageRawSize; ; x--) {
+  for (x; ; x++) {
     char c = smsMessageRaw[x];
     if (c == '"') {
-      smsIndex = x + 3;
+      smsIndex = x + 29;
+      //Serial.println(smsIndex);
       break;
     }
   }
-  //int numIndex = smsMessageRaw.indexOf('"') + 3;
-  //int smsIndex = smsMessageRaw.lastIndexOf('"') + 3;
 
-  int x = 0;
+  x = 0;
   for (numIndex; ; numIndex++) {
     char c = smsMessageRaw[numIndex];
     if (c == '"') {
@@ -1753,6 +1797,8 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
     smsRecNumber[x] = c;
     x++;
   }
+  smsRecNumber[x] = '\0';
+  //Serial.println(smsRecNumber);
 
   x = 0;
   for (smsIndex; ; smsIndex++) {
@@ -1764,6 +1810,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
     smsMessage[x] = c;
     x++;
   }
+  //Serial.println(smsMessage);
 
   if (!debugMode) {
     char debugString[64];
@@ -1779,8 +1826,16 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
   }
 
   if (smsStartup) {
-    if (smsMessage == "Ready") smsReadyReceived = true;
-    else startupFailure();
+    //if (smsMessage == "Ready") smsReadyReceived = true;
+    char readyMessage[] = "Ready";
+    for (x = 0; x < 5; x++) {
+      if (smsMessage[x] == readyMessage[x]) smsReadyReceived = true;
+      else {
+        smsReadyReceived = false;
+        break;
+      }
+    }
+    if (!smsReadyReceived) startupFailure();
   }
 
   else if (execCommand) {
@@ -1788,7 +1843,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
 
     //if (smsMessage.length() == 1) smsCommand = smsMessage.toInt();
     int messageLength = 0;
-    for (int x = 0; x < sizeof(smsMessage); x++) {
+    for (x = 0; x < sizeof(smsMessage); x++) {
       if (isAlphaNumeric(smsMessage[x])) messageLength++;
     }
     if (messageLength == 1) smsCommand = int(smsMessage[0]);
@@ -1907,17 +1962,6 @@ void smsFlush() {
       char c = Serial1.read();
       delay(10);
     }
-  }
-}
-
-void startupFailure() {
-  while (true) {
-    digitalWrite(gpsReadyLED, LOW);
-    digitalWrite(programStartLED, HIGH);
-    delay(500);
-    digitalWrite(gpsReadyLED, HIGH);
-    digitalWrite(programStartLED, LOW);
-    delay(500);
   }
 }
 
@@ -2060,5 +2104,16 @@ void debugBlink() {
     digitalWrite(debugLED, HIGH);
     delay(250);
     digitalWrite(debugLED, LOW);
+  }
+}
+
+void startupFailure() {
+  while (true) {
+    digitalWrite(gpsReadyLED, LOW);
+    digitalWrite(programStartLED, HIGH);
+    delay(100);
+    digitalWrite(gpsReadyLED, HIGH);
+    digitalWrite(programStartLED, LOW);
+    delay(100);
   }
 }
