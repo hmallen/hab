@@ -16,7 +16,6 @@
 # - Capture from up-facing webcam when approaching peak through ~+0:60 seconds
 #
 
-import datetime
 import serial
 from time import sleep
 from timeit import default_timer as timer
@@ -75,6 +74,7 @@ def takeoff_capture():
         startTime = timer()
         if (startTime - startTimeStatic) > takeoffBreakTime:
             continueCapture = False
+
 
 while True:
     if habSerial.inWaiting() > 0:
