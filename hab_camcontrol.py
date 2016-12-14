@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
 # TO DO
-#
-# Add outputs to Arduino sketch
-# Test if PiCamera capture possible while recording video
-# Test if 2 videos can be recorded simultaneously
+# - ????
 #
 # Photo:
 # - Regular capture from PiCam
