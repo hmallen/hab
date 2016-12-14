@@ -41,6 +41,7 @@
   2 --> Landing phase
 
   TO DO:
+  - Add servo selfie deployment
   - MUST FIND FUNCTION TO CONFIRM GPRS POWER TO RESTART IF NECESSARY!!!! ****
   - INTEGRATE ARDUINO-->RPI COMMUNICATION ****
   - Confirm that GPS coordinates are sent with highest precision (i.e. 6 floating point decimals)
@@ -72,6 +73,7 @@
   - Change global variables to functions returning pointer arrays
 
   CONSIDERATIONS:
+  - If Python script function timeouts could potentially cause gaps in media acquisition if malfunctioning
   - Setting SD to SPI_FULL_SPEED
   - Inclusion of additional startup SMS output (gas sensor warmup, etc.)
   - Safer to power GPRS before other things to ensure network connectivity?
@@ -140,10 +142,10 @@ const bool debugSmsOff = true;
 const bool debugHeaterOff = true;
 //const bool debugInputMode = true;
 const int debugLED = 13;
-const int debugCamPin = 44;
-const int debugModePin = 45;
-const int debugHeaterPin = 46;
-bool debugCamState, debugModeState, debugHeaterState;
+const int debugStatePin = 44;
+const int debugHeaterPin = 45;
+bool debugState, debugHeaterState;
+bool selfieRetract = false;
 
 // Digital Pins
 const int chipSelect = SS;
@@ -541,8 +543,7 @@ void setup() {
   pinMode(photoDeployPin, OUTPUT);
   digitalWrite(photoDeployPin, HIGH);
 
-  pinMode(debugCamPin, INPUT_PULLUP);
-  pinMode(debugModePin, INPUT_PULLUP);
+  pinMode(debugStatePin, INPUT_PULLUP);
   pinMode(debugHeaterPin, INPUT_PULLUP);
   pinMode(gpsPpsPin, INPUT_PULLUP);
   pinMode(programStartPin, INPUT_PULLUP);
@@ -1314,8 +1315,7 @@ void checkChange() {
   float dofAltChange = dofAltLast - dofAlt;
   float ms5607PressChange = ms5607Press - ms5607PressLast;
 
-  debugCamState = digitalRead(debugCamPin);
-  debugModeState = digitalRead(debugModePin);
+  debugState = digitalRead(debugStatePin);
   debugHeaterState = digitalRead(debugHeaterPin);
 
   if (!debugHeaterOff) {
@@ -1353,18 +1353,16 @@ void checkChange() {
       resetHandler = true;
     }
     else if (launchCapture && resetHandler) {
-      if ((dofAlt - dofAltOffset) > LAUNCHCAPTURETHRESHOLD) {
+      if ((dofAlt - dofAltOffset) > LAUNCHCAPTURETHRESHOLD || !debugState) {
         Serial.println("$0");
         resetHandler = false;
       }
     }
     else if (launchCapture && !resetHandler && !peakCapture) {
       //if (dofPressure < PEAKCAPTURETHRESHOLD) {
-      bool debugCamState = digitalRead(debugCamPin);
-      if (!debugCamState) debugBlink();
-      if (dofPressure < PEAKCAPTURETHRESHOLD || !debugCamState) {
+      if (dofPressure < PEAKCAPTURETHRESHOLD || !debugState) {
         Serial.println("$2");
-        digitalWrite(photoDeployPin, LOW);
+        digitalWrite(photoDeployPin, LOW);  // DEPLOYMENT OF SPACE SELFIE!!!!
         photoDeployStart = millis();
         peakCapture = true;
         resetHandler = true;
@@ -1400,19 +1398,20 @@ void checkChange() {
     }
   }
 
-  if (peakCapture && !descentPhase && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
+  // RETRACTION OF SPACE SELFIE!!!!
+  if (peakCapture && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
     digitalWrite(photoDeployPin, HIGH);
+    selfieRetract = true;
   }
 
-  bool debugModeState = digitalRead(debugModePin);
-  if (!debugModeState) {
-    debugBlink();
-    descentPhase = true;
-  }
-  else if (gpsChanges >= 10) descentPhase = true;
+  if (gpsChanges >= 10) descentPhase = true;
   else if (dofChanges >= 10) descentPhase = true;
   else if (gpsChanges >= 5 && dofChanges >= 5) descentPhase = true;
   else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
+  else if (!debugState && selfieRetract == true) {
+    debugBlink();
+    descentPhase = true;
+  }
 
   if (descentPhase) {
     if (debugMode) Serial.println("DESCENT PHASE TRIGGERED.");
@@ -1439,14 +1438,18 @@ void checkChange() {
   }
 
   else if (descentPhase && !landingPhase) {
+    static bool modeSkip = false;
     if (!landingCapture) {
-      debugCamState = digitalRead(debugCamPin);
-      if (!debugCamState) debugBlink();
-      if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugCamState) {
+      if (!debugState) debugBlink();
+      if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugState) {
         Serial.println("$3");
         landingCapture = true;
         resetHandler = true;
       }
+    }
+    else if (landingCapture && !debugState) {
+      debugBlink();
+      landingPhase = true;
     }
 
     if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges = 0;
@@ -1457,12 +1460,6 @@ void checkChange() {
 
     if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) ms5607Changes = 0;
     else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
-
-    debugModeState = digitalRead(debugModePin);
-    if (!debugModeState) {
-      debugBlink();
-      landingPhase = true;
-    }
     else if (gpsChanges >= 10) landingPhase = true;
     else if (dofChanges >= 10) landingPhase = true;
     else if (gpsChanges >= 5 && dofChanges >= 5) landingPhase = true;
