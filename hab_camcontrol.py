@@ -48,10 +48,6 @@ def serial_receive(serialData):
             return '-1'
 
 
-def serial_send(serialData):
-    habSerial.write(serialData)
-
-
 def capture_photo(camType):
     if camType == 'rpi':
         #timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
@@ -120,9 +116,10 @@ def takeoff_capture():
                     if habOutput:
                         if habOutput[0] == '$':
                             habCommand = serial_receive(habOutput)
-                            print habCommand
                             if habCommand == '0':
                                 continueCapture = False
+                            elif habCommand == '-1':
+                                print 'INVALID COMMAND RECEIVED.'
             capture_photo(camPi)
             sleep(1)
             capture_photo(camUp)
@@ -149,9 +146,10 @@ def peak_capture():
                     if habOutput:
                         if habOutput[0] == '$':
                             habCommand = serial_receive(habOutput)
-                            print habCommand
                             if habCommand == '0':
                                 continueCapture = False
+                            elif habCommand == '-1':
+                                print 'INVALID COMMAND RECEIVED.'
             capture_photo(camPi)
             sleep(1)
             capture_photo(camDown)
@@ -180,9 +178,10 @@ def landing_capture():
                     if habOutput:
                         if habOutput[0] == '$':
                             habCommand = serial_receive(habOutput)
-                            print habCommand
                             if habCommand == '0':
                                 continueCapture = False
+                            elif habCommand == '-1':
+                                print 'INVALID COMMAND RECEIVED.'
             capture_photo(camPi)
             sleep(1)
             capture_photo(camUp)
@@ -192,50 +191,21 @@ def landing_capture():
         if (startTime - startTimeStatic) > takeoffBreakTime:
             continueCapture = False
 
-    startTime = timer()
-    startTimeStatic = startTime
-    while True:
-        habOutput = habSerial.readline()[:-2]
-        if habOutput:
-            habCommand = serial_receive(habOutput)
-            print habCommand
-            if habCommand == '0':
-                break
-        capture_video(camDown, 120)
-        sleep(121)
-        capture_video(camUp, 10)
-        sleep(1)
-        while (timer() - startTime) <= 130:
-            sleep(1)
-            capture_photo(camPi)
-            sleep(1)
-            capture_photo(camUp)
-            sleep (10)
-        startTime = timer()
-        if (startTime - startTimeStatic) > landingBreakTime:
-            break
 
-
-while True:
-    habOutput = habSerial.readline()[:-2]
-    if habOutput:
-        habCommand = serial_receive(habOutput)
-        print habCommand
-        if habCommand == '0':
-            serial_send('$0')
-            break   #IS THIS BREAK NEEDED????
-
-while True:
+programStart = False
+while programStart is False:
     if habSerial.inWaiting() > 0:
         while habSerial.inWaiting() > 0:
             habOutput = habSerial.readline()[:-2]
             if habOutput:
                 if habOutput[0] == '$':
                     habCommand = serial_receive(habOutput)
-                    print habCommand
                     if habCommand == '0':
-                        serial_send('$0')
-                        break   #IS THIS BREAK NEEDED????
+                        habSerial.write('$0')
+                        programStart = True
+                        break
+                    elif habCommand == '-1':
+                        print 'INVALID COMMAND RECEIVED.'
                 else:
                     print habOutput
 
@@ -251,19 +221,23 @@ while True:
     
     startTime = timer()
     while (timer() - startTime) < captureInterval:
-        habOutput = habSerial.readline()[:-2]
-        if habOutput:
-            habCommand = serial_receive(habOutput)
-            print habCommand
-            if habCommand == '1':
-                print '---> ENTERING TAKEOFF CAPTURE <--'
-                takeoff_capture()
-                print '---> EXITING TAKEOFF CAPTURE <--'
-            elif habCommand == '2':
-                print '---> ENTERING PEAK CAPTURE <--'
-                peak_capture()
-                print '---> EXITING PEAK CAPTURE <--'
-            elif habCommand == '3':
-                print '---> ENTERING LANDING CAPTURE <--'
-                landing_capture()
-                print '---> EXITING LANDING CAPTURE <--'
+        if habSerial.inWaiting() > 0:
+            while habSerial.inWaiting() > 0:
+                habOutput = habSerial.readline()[:-2]
+                if habOutput:
+                    if habOutput[0] == '$':
+                        habCommand = serial_receive(habOutput)
+                        if habCommand == '1':
+                            print '---> ENTERING TAKEOFF CAPTURE <--'
+                            takeoff_capture()
+                            print '---> EXITING TAKEOFF CAPTURE <--'
+                        elif habCommand == '2':
+                            print '---> ENTERING PEAK CAPTURE <--'
+                            peak_capture()
+                            print '---> EXITING PEAK CAPTURE <--'
+                        elif habCommand == '3':
+                            print '---> ENTERING LANDING CAPTURE <--'
+                            landing_capture()
+                            print '---> EXITING LANDING CAPTURE <--'
+                    else:
+                        print habOutput
