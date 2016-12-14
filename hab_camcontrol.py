@@ -240,12 +240,14 @@ while True:
                     print habOutput
 
 while True:
+    print '--> ENTERING MAIN PHOTO CAPTURE <--'
     capture_photo(camPi)
     sleep(1)
     capture_photo(camDown)
     sleep(1)
     capture_photo(camUp)
     sleep(1)
+    print '--> EXITING MAIN PHOTO CAPTURE <--'
     
     startTime = timer()
     while (timer() - startTime) < captureInterval:
