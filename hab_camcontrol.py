@@ -257,8 +257,14 @@ while True:
             habCommand = serial_receive(habOutput)
             print habCommand
             if habCommand == '1':
+                print '---> ENTERING TAKEOFF CAPTURE <--'
                 takeoff_capture()
+                print '---> EXITING TAKEOFF CAPTURE <--'
             elif habCommand == '2':
+                print '---> ENTERING PEAK CAPTURE <--'
                 peak_capture()
+                print '---> EXITING PEAK CAPTURE <--'
             elif habCommand == '3':
+                print '---> ENTERING LANDING CAPTURE <--'
                 landing_capture()
+                print '---> EXITING LANDING CAPTURE <--'
