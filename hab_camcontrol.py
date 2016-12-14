@@ -23,12 +23,12 @@ from timeit import default_timer as timer
 habSerial = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
 captureInterval = 10
-#takeoffBreakTime = 600
-takeoffBreakTime = 180	# DEBUG VALUE
-#peakBreakTime = 900
-peakBreakTime = 240	# DEBUG VALUE
-#landingBreakTime = 7200
-landingBreakTime = 240	# DEBUG VALUE
+takeoffBreakTime = 600
+#takeoffBreakTime = 180	# DEBUG VALUE
+peakBreakTime = 900
+#peakBreakTime = 240	# DEBUG VALUE
+landingBreakTime = 7200
+#landingBreakTime = 240	# DEBUG VALUE
 
 camPi = 'rpi'
 camDown = 'down'
@@ -115,22 +115,21 @@ def takeoff_capture():
         
         while (timer() - startTime) <= 120:
             if habSerial.inWaiting() > 0:
-                while habSerial.inWaiting() > 0:
-                    habOutput = habSerial.readline()[:-2]
-                    if habOutput:
-                        if habOutput[0] == '$':
-                            habCommand = serial_receive(habOutput)
-                            if habCommand == '0':
-                                continueCapture = False
-                            elif habCommand == '-1':
-                                print 'INVALID COMMAND RECEIVED.'
-                        else:
-                            print habOutput
+                habOutput = habSerial.readline()[:-2]
+                if habOutput:
+                    if habOutput[0] == '$':
+                        habCommand = serial_receive(habOutput)
+                        if habCommand == '0':
+                            continueCapture = False
+                        elif habCommand == '-1':
+                            print 'INVALID COMMAND RECEIVED.'
+                    else:
+                        print habOutput
                             
-            capture_photo(camPi)
-            sleep(1)
-            capture_photo(camUp)
-            sleep(10)
+                capture_photo(camPi)
+                sleep(1)
+                capture_photo(camUp)
+                sleep(10)
 
         startTime = timer()
         if (startTime - startTimeStatic) > takeoffBreakTime:
