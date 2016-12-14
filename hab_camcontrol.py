@@ -109,6 +109,7 @@ def takeoff_capture():
     while continueCapture is True:
         capture_video(camDown, 120)
         sleep(1)
+        
         while (timer() - startTime) <= 120:
             if habSerial.inWaiting() > 0:
                 while habSerial.inWaiting() > 0:
@@ -120,6 +121,9 @@ def takeoff_capture():
                                 continueCapture = False
                             elif habCommand == '-1':
                                 print 'INVALID COMMAND RECEIVED.'
+                        else:
+                            print habOutput
+                            
             capture_photo(camPi)
             sleep(1)
             capture_photo(camUp)
@@ -150,6 +154,9 @@ def peak_capture():
                                 continueCapture = False
                             elif habCommand == '-1':
                                 print 'INVALID COMMAND RECEIVED.'
+                        else:
+                            print habOutput
+                        
             capture_photo(camPi)
             sleep(1)
             capture_photo(camDown)
@@ -182,6 +189,9 @@ def landing_capture():
                                 continueCapture = False
                             elif habCommand == '-1':
                                 print 'INVALID COMMAND RECEIVED.'
+                        else:
+                            print habOutput
+                        
             capture_photo(camPi)
             sleep(1)
             capture_photo(camUp)
