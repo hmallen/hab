@@ -137,7 +137,7 @@ const int gpsTimeOffset = -5;
 #endif
 
 // DEBUG
-const bool debugMode = true;
+const bool debugMode = false;
 const bool debugSmsOff = true;
 const bool debugHeaterOff = true;
 //const bool debugInputMode = true;
