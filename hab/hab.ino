@@ -749,12 +749,14 @@ void setup() {
   }
   //}
   //else {
-  Serial.println("starting program.");
-  Serial.println();
-  Serial.println(F("-----------------"));
-  Serial.println(F("---- PROGRAM ----"));
-  Serial.println(F("-----------------"));
-  Serial.println();
+  if (debugMode) {
+    Serial.println("starting program.");
+    Serial.println();
+    Serial.println(F("-----------------"));
+    Serial.println(F("---- PROGRAM ----"));
+    Serial.println(F("-----------------"));
+    Serial.println();
+  }
   //}
 
   EEPROM.update(0, 1);
@@ -763,11 +765,11 @@ void setup() {
 }
 
 void loop() {
-  if (debugMode) {
-    Serial.print("Loop #: ");
-    Serial.println(loopCount);
-    Serial.println();
-  }
+  //if (debugMode) {
+  Serial.print("Loop #: ");
+  Serial.println(loopCount);
+  //Serial.println();
+  //}
   unsigned long loopStart = millis();
   for (int x = 0; x < 3; x++) {
     for (int y = 0; y < 10; y++) {
@@ -925,8 +927,10 @@ void loop() {
       }
     }
 
-    if (debugMode) Serial.print("Aux Loop #: ");
+    //if (debugMode) {
+    Serial.print("Aux Loop #: ");
     Serial.println(auxLoopCount);
+    //}
 
     sprintf(auxLoopCountChar, "%i", auxLoopCount);
     auxLoopCount++;
@@ -973,8 +977,10 @@ void loop() {
     gpsLat = gpsLatLast;
     gpsLng = gpsLngLast;
   }
-  if (debugMode) Serial.print("GPS Loop #: ");
+  //if (debugMode) {
+  Serial.print("GPS Loop #: ");
   Serial.println(gpsLoopCount);
+  //}
   gpsLoopCount++;
 
   if (debugMode) {
