@@ -23,9 +23,12 @@ from timeit import default_timer as timer
 habSerial = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
 captureInterval = 10
-takeoffBreakTime = 600
-peakBreakTime = 900
-landingBreakTime = 7200
+#takeoffBreakTime = 600
+takeoffBreakTime = 180	# DEBUG VALUE
+#peakBreakTime = 900
+peakBreakTime = 240	# DEBUG VALUE
+#landingBreakTime = 7200
+landingBreakTime = 240	# DEBUG VALUE
 
 camPi = 'rpi'
 camDown = 'down'
@@ -220,14 +223,13 @@ while programStart is False:
                     print habOutput
 
 while True:
-    print '--> ENTERING MAIN PHOTO CAPTURE <--'
+    print '--> MAIN PHOTO CAPTURE <--'
     capture_photo(camPi)
     sleep(1)
     capture_photo(camDown)
     sleep(1)
     capture_photo(camUp)
     sleep(1)
-    print '--> EXITING MAIN PHOTO CAPTURE <--'
     
     startTime = timer()
     while (timer() - startTime) < captureInterval:
