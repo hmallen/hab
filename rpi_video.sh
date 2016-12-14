@@ -11,4 +11,4 @@ SUFFIX=".h264"
 
 FILE=$PREFIX$CAMTYPE$DATE$SUFFIX
 
-raspivid -o $FILE -t $LENGTH
+sudo raspivid -o $FILE -t $LENGTH

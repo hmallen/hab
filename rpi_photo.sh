@@ -8,4 +8,4 @@ SUFFIX=".jpg"
 
 FILE=$PREFIX$CAMTYPE$DATE$SUFFIX
 
-raspistill -o $FILE
+sudo raspistill -o $FILE
