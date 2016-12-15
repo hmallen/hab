@@ -153,15 +153,19 @@ while True:
                     print 'Command received (Main): ' + habOutput
                     if habOutput[1] == '0':
                         programMode = 0
+                        print 'Entering main phase.'
                     elif habOutput[1] == '1':
                         programMode = 1
                         takeoffStart = timer()
+                        print 'Entering takeoff phase.'
                     elif habOutput[1] == '2':
                         programMode = 2
                         peakStart = timer()
+                        print 'Entering peak phase.'
                     elif habOutput[1] == '3':
                         programMode = 3
                         landingStart = timer()
+                        print 'Entering landing phase.'
                 else:
                     print habOutput
 
@@ -194,6 +198,7 @@ while True:
 
         if (timer() - takeoffStart) > takeoffMaxDuration:
             programMode = 0
+            print 'Takeoff timeout. Entering main phase.'
 
     elif programMode == 2:  # Peak capture
         if (timer() - videoStartDown) > 120 and camDownActive == True:
@@ -210,6 +215,7 @@ while True:
 
         if (timer() - peakStart) > peakMaxDuration:
             programMode = 0
+            print 'Peak timeout. Entering main phase.'
 
     elif programMode == 3:  # Landing capture
         if (timer() - videoStartUp) > 10 and camUpActive == False and camDownActive == False:
@@ -235,6 +241,7 @@ while True:
 
         if (timer() - landingStart) > landingMaxDuration:
             programMode = 0
+            print 'Landing timeout. Entering main phase.'
 
     capture_photo(camPi)
     sleep(1)
