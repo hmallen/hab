@@ -10,6 +10,7 @@ TO DO:
 -- Determine parachute diameter
 - Test payload heater and gas sensors with battery arrays
 -- Time & Stress testing (payload heater @ sustained high current)
+- AT YOUR OWN RISK...try reintegrating dual webcam capture -- Original test was run without independent Arduino power (power provided by RPi)
 
 Pre-launch Checklist:
 - Burn-in gas sensors for 24-48 hours
