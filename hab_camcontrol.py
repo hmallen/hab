@@ -137,10 +137,10 @@ def takeoff_capture():
                         print 'Command received (T)'
                         print habOutput
                         #habCommand = serial_receive(habOutput)
-                        if habCommand == '0':
+                        if habOutput[0] == '0':
                             print 'RPi: Phase termination signal received.'
                             continueCapture = False
-                        elif habCommand == '-1':
+                        else:
                             print 'INVALID COMMAND RECEIVED.'
                     else:
                         print habOutput
