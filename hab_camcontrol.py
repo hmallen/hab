@@ -41,7 +41,7 @@ camera.framerate = 15
 
 global videoStart
 
-videoStart = timer()
+videoStart = -120
 
 
 def capture_photo(camType):
@@ -257,7 +257,6 @@ while programStart is False:
             else:
                 print habOutput
 
-videoStart = -120
 
 while True:
     if (timer() - videoStart) > 120:
