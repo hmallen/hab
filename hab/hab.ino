@@ -1407,7 +1407,7 @@ void checkChange() {
   }
 
   // RETRACTION OF SPACE SELFIE!!!!
-  if (peakCapture && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
+  if (peakCapture && selfieRetract == false && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
     Serial.println("Retracting selfie servo.");
     digitalWrite(photoDeployPin, HIGH);
     selfieRetract = true;
