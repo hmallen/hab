@@ -142,8 +142,8 @@ const bool debugSmsOff = true;
 const bool debugHeaterOff = true;
 //const bool debugInputMode = true;
 const int debugLED = 13;
-const int debugStatePin = 44;
-const int debugHeaterPin = 45;
+const int debugHeaterPin = A1;
+const int debugStatePin = A2;
 bool debugState, debugHeaterState;
 bool selfieRetract = false;
 
