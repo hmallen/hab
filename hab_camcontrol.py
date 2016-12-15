@@ -174,8 +174,10 @@ try:
         if programMode == 0:    # Regular capture
             if (timer() - videoStartDown) > 120 and camDownActive == True:
                 camDownActive = False
+                print 'Down-facing video capture finished.'
             if (timer() - videoStartUp) > 120 and camUpActive == True:
                 camUpActive = False
+                print 'Up-facing video capture finished.'
 
             if camDownActive == False:
                 capture_photo(camDown)
@@ -187,12 +189,15 @@ try:
         elif programMode == 1:  # Takeoff capture
             if (timer() - videoStartDown) > 120 and camDownActive == True:
                 camDownActive = False
+                print 'Down-facing video capture finished.'
             if (timer() - videoStartUp) > 120 and camUpActive == True:
                 camUpActive = False
+                print 'Up-facing video capture finished.'
 
             if camDownActive == False and camUpActive == False:
                 capture_video(camDown, 120)
                 sleep(1)
+                camDownActive = True
             if camUpActive == False:
                 capture_photo(camUp)
                 sleep(1)
@@ -204,12 +209,15 @@ try:
         elif programMode == 2:  # Peak capture
             if (timer() - videoStartDown) > 120 and camDownActive == True:
                 camDownActive = False
+                print 'Down-facing video capture finished.'
             if (timer() - videoStartUp) > 120 and camUpActive == True:
                 camUpActive = False
+                print 'Up-facing video capture finished.'
 
             if camUpActive == False and camDownActive == False:
                 capture_video(camUp, 120)
                 sleep(1)
+                camUpActive = True
             if camDownActive == False:
                 capture_photo(camDown)
                 sleep(1)
@@ -225,6 +233,7 @@ try:
                 camUpActive = True
             elif (timer() - videoStartUp) > 10 and camUpActive == True:
                 camUpActive = False
+                print 'Up-facing video capture finished.'
 
             if (timer() - videoStartDown) > 120 and camDownActive == False and camUpActive == False:
                 capture_video(camDown, 120)
@@ -232,6 +241,7 @@ try:
                 camDownActive = True
             elif (timer() - videoStartDown) > 120 and camDownActive == True:
                 camDownActive = False
+                print 'Down-facing video capture finished.'
 
             if camDownActive == False:
                 capture_photo(camDown)
