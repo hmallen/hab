@@ -126,10 +126,10 @@ def takeoff_capture():
                     else:
                         print habOutput
                             
-                capture_photo(camPi)
-                sleep(1)
-                capture_photo(camUp)
-                sleep(10)
+            capture_photo(camPi)
+            sleep(1)
+            capture_photo(camUp)
+            sleep(10)
 
         startTime = timer()
         if (startTime - startTimeStatic) > takeoffBreakTime:
@@ -145,6 +145,7 @@ def peak_capture():
     while continueCapture is True:
         capture_video(camUp, 120)
         sleep(1)
+
         while (timer() - startTime) <= 120:
             if habSerial.inWaiting() > 0:
                 habOutput = habSerial.readline()[:-2]
@@ -158,10 +159,10 @@ def peak_capture():
                     else:
                         print habOutput
                         
-                capture_photo(camPi)
-                sleep(1)
-                capture_photo(camDown)
-                sleep(10)
+            capture_photo(camPi)
+            sleep(1)
+            capture_photo(camDown)
+            sleep(10)
 
         startTime = timer()
         if (startTime - startTimeStatic) > takeoffBreakTime:
@@ -179,6 +180,7 @@ def landing_capture():
         sleep(1)
         capture_video(camDown, 120)
         sleep(1)
+
         while (timer() - startTime) <= 120:
             if habSerial.inWaiting() > 0:
                 habOutput = habSerial.readline()[:-2]
@@ -192,10 +194,10 @@ def landing_capture():
                     else:
                         print habOutput
                     
-                capture_photo(camPi)
-                sleep(1)
-                capture_photo(camUp)
-                sleep(10)
+            capture_photo(camPi)
+            sleep(1)
+            capture_photo(camUp)
+            sleep(10)
 
         startTime = timer()
         if (startTime - startTimeStatic) > takeoffBreakTime:
