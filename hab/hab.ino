@@ -1360,6 +1360,7 @@ void checkChange() {
     }
     else if (launchCapture && resetHandler) {
       if ((dofAlt - dofAltOffset) > LAUNCHCAPTURETHRESHOLD || !debugState) {
+        if (!debugState) Serial.println("Executing debug trigger for launch capture termination.");
         Serial.println("$0");
         resetHandler = false;
       }
@@ -1367,6 +1368,7 @@ void checkChange() {
     else if (launchCapture && !resetHandler && !peakCapture) {
       //if (dofPressure < PEAKCAPTURETHRESHOLD) {
       if (dofPressure < PEAKCAPTURETHRESHOLD || !debugState) {
+        if (!debugState) Serial.println("Executing debug trigger for peak capture. Deploying selifie servo.");
         Serial.println("$2");
         digitalWrite(photoDeployPin, LOW);  // DEPLOYMENT OF SPACE SELFIE!!!!
         photoDeployStart = millis();
@@ -1406,6 +1408,7 @@ void checkChange() {
 
   // RETRACTION OF SPACE SELFIE!!!!
   if (peakCapture && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
+    Serial.println("Retracting selfie servo.");
     digitalWrite(photoDeployPin, HIGH);
     selfieRetract = true;
   }
@@ -1415,6 +1418,7 @@ void checkChange() {
   else if (gpsChanges >= 5 && dofChanges >= 5) descentPhase = true;
   else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
   else if (!debugState && selfieRetract == true) {
+    if (!debugState) Serial.println("Executing debug trigger for descent phase.");
     debugBlink();
     descentPhase = true;
   }
@@ -1448,6 +1452,7 @@ void checkChange() {
     if (!landingCapture) {
       if (!debugState) debugBlink();
       if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugState) {
+        if (!debugState) Serial.println("Executing debug trigger for landing capture.");
         Serial.println("$3");
         landingCapture = true;
         resetHandler = true;
