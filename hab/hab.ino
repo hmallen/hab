@@ -761,15 +761,16 @@ void setup() {
 
   EEPROM.update(0, 1);
   digitalWrite(programReadyPin, HIGH);
-  digitalWrite(programStartLED, HIGH); //digitalWrite(gpsReadyLED, LOW);
+  digitalWrite(programStartLED, LOW);
+  digitalWrite(gpsReadyLED, LOW);
 }
 
 void loop() {
-  //if (debugMode) {
-  Serial.print("Loop #: ");
-  Serial.println(loopCount);
-  //Serial.println();
-  //}
+  if (debugMode) {
+    Serial.print("Loop #: ");
+    Serial.println(loopCount);
+    Serial.println();
+  }
   unsigned long loopStart = millis();
   for (int x = 0; x < 3; x++) {
     for (int y = 0; y < 10; y++) {
@@ -927,10 +928,10 @@ void loop() {
       }
     }
 
-    //if (debugMode) {
-    Serial.print("Aux Loop #: ");
-    Serial.println(auxLoopCount);
-    //}
+    if (debugMode) {
+      Serial.print("Aux Loop #: ");
+      Serial.println(auxLoopCount);
+    }
 
     sprintf(auxLoopCountChar, "%i", auxLoopCount);
     auxLoopCount++;
@@ -977,10 +978,10 @@ void loop() {
     gpsLat = gpsLatLast;
     gpsLng = gpsLngLast;
   }
-  //if (debugMode) {
-  Serial.print("GPS Loop #: ");
-  Serial.println(gpsLoopCount);
-  //}
+  if (debugMode) {
+    Serial.print("GPS Loop #: ");
+    Serial.println(gpsLoopCount);
+  }
   gpsLoopCount++;
 
   if (debugMode) {
@@ -1355,19 +1356,21 @@ void checkChange() {
   if (!descentPhase) {
     if (!launchCapture) {
       Serial.println("$1");
+      digitalWrite(gpsReadyLED, HIGH);
       launchCapture = true;
       resetHandler = true;
     }
     else if (launchCapture && resetHandler) {
       if ((dofAlt - dofAltOffset) > LAUNCHCAPTURETHRESHOLD || !debugState) {
         Serial.println("$0");
+        digitalWrite(gpsReadyLED, LOW);
         resetHandler = false;
       }
     }
     else if (launchCapture && !resetHandler && !peakCapture) {
-      //if (dofPressure < PEAKCAPTURETHRESHOLD) {
       if (dofPressure < PEAKCAPTURETHRESHOLD || !debugState) {
         Serial.println("$2");
+        digitalWrite(programStartLED, HIGH);
         digitalWrite(photoDeployPin, LOW);  // DEPLOYMENT OF SPACE SELFIE!!!!
         photoDeployStart = millis();
         peakCapture = true;
@@ -1410,7 +1413,7 @@ void checkChange() {
     selfieRetract = true;
   }
   else if (selfieRetract == true && !debugState) {
-    if (!debugState) Serial.println("Executing debug trigger for descent phase.");
+    //if (!debugState) Serial.println("Executing debug trigger for descent phase.");
     debugBlink();
     descentPhase = true;
   }
@@ -1423,9 +1426,11 @@ void checkChange() {
   if (descentPhase) {
     if (debugMode) Serial.println("DESCENT PHASE TRIGGERED.");
     Serial.println("$0");
+    digitalWrite(programStartLED, LOW);
     resetHandler = false;
 
     EEPROM.write(1, 1);
+
     if (debugMode) {
       Serial.println();
       Serial.println("Descent phase triggered.");
@@ -1449,7 +1454,7 @@ void checkChange() {
     if (!landingCapture) {
       if (!debugState) debugBlink();
       if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugState) {
-        if (!debugState) Serial.println("Executing debug trigger for landing capture.");
+        //if (!debugState) Serial.println("Executing debug trigger for landing capture.");
         Serial.println("$3");
         landingCapture = true;
         resetHandler = true;
@@ -1476,12 +1481,14 @@ void checkChange() {
     if (landingPhase) {
       if (debugMode) Serial.println("LANDING PHASE TRIGGERED.");
       Serial.println("$0");
+      digitalWrite(gpsReadyLED, HIGH);
       resetHandler = false;
 
       if (debugMode) {
         Serial.println();
         Serial.print("Landing phase triggered. Sending location via SMS...");
       }
+
       Serial1.print("AT+CMGS=\"");
       Serial1.print(smsTargetNum);
       Serial1.println("\"");
