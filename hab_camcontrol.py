@@ -37,7 +37,7 @@ camera = picamera.PiCamera()
 camera.resolution = (2592, 1944)
 camera.framerate = 15
 
-global
+global videoStart = timer()
 
 
 def serial_receive(serialData):
@@ -128,12 +128,15 @@ def capture_video(camType, vidLength):
 
 
 def takeoff_capture():
+    global videoStart
+
     # CONTINUE CAPTURING DOWN-FACING WEBCAM VIDEO UNTIL THRESHOLD ALTITUDE ACHEIVED
     startTime = timer()
     startTimeStatic = startTime
     continueCapture = True
 
     while continueCapture is True:
+        videoStart = timer()
         capture_video(camDown, 120)
         sleep(1)
         
@@ -253,32 +256,36 @@ while programStart is False:
                     print habOutput
 
 while True:
-    print '--> MAIN PHOTO CAPTURE <--'
-    capture_photo(camPi)
-    sleep(1)
-    capture_photo(camDown)
-    sleep(1)
-    capture_photo(camUp)
-    sleep(1)
+    if (timer() - videoStart) > 120:
+        print '--> MAIN PHOTO CAPTURE <--'
+        capture_photo(camPi)
+        sleep(1)
+        capture_photo(camDown)
+        sleep(1)
+        capture_photo(camUp)
+        sleep(1)
+    else:
+        print 'Waiting for video capture to complete.'
     
     startTime = timer()
     while (timer() - startTime) < captureInterval:
-        if habSerial.inWaiting() > 0:
-            habOutput = habSerial.readline()[:-2]
-            if habOutput:
-                if habOutput[0] == '$':
-                    habCommand = serial_receive(habOutput)
-                    if habCommand == '1':
-                        print '---> ENTERING TAKEOFF CAPTURE <--'
-                        takeoff_capture()
-                        print '---> EXITING TAKEOFF CAPTURE <--'
-                    elif habCommand == '2':
-                        print '---> ENTERING PEAK CAPTURE <--'
-                        peak_capture()
-                        print '---> EXITING PEAK CAPTURE <--'
-                    elif habCommand == '3':
-                        print '---> ENTERING LANDING CAPTURE <--'
-                        landing_capture()
-                        print '---> EXITING LANDING CAPTURE <--'
-                else:
-                    print habOutput
+        if (timer() - videoStart) > 120:
+            if habSerial.inWaiting() > 0:
+                habOutput = habSerial.readline()[:-2]
+                if habOutput:
+                    if habOutput[0] == '$':
+                        habCommand = serial_receive(habOutput)
+                        if habCommand == '1':
+                            print '---> ENTERING TAKEOFF CAPTURE <--'
+                            takeoff_capture()
+                            print '---> EXITING TAKEOFF CAPTURE <--'
+                        elif habCommand == '2':
+                            print '---> ENTERING PEAK CAPTURE <--'
+                            peak_capture()
+                            print '---> EXITING PEAK CAPTURE <--'
+                        elif habCommand == '3':
+                            print '---> ENTERING LANDING CAPTURE <--'
+                            landing_capture()
+                            print '---> EXITING LANDING CAPTURE <--'
+                    else:
+                        print habOutput
