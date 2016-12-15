@@ -60,6 +60,7 @@ def capture_photo(camType):
         camera.start_preview()
         sleep(2)
         camera.capture(filename)
+        camera.stop_preview()
 
         #popenString = './rpi_photo.sh'
         #popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
