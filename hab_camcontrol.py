@@ -22,6 +22,8 @@ from timeit import default_timer as timer
 
 habSerial = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
+# NEED TO FLUSH ALL INCOMING SERIAL DATA HERE!!!!!!!!!!!!!!!!
+
 captureInterval = 10
 takeoffBreakTime = 600
 #takeoffBreakTime = 180	# DEBUG VALUE
