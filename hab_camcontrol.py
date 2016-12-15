@@ -53,17 +53,20 @@ def serial_receive(serialData):
 
 def capture_photo(camType):
     if camType == 'rpi':
-        #timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
-        #filename = 'media/photos/RPI-' + timestamp + '.jpg'
-        #camera.start_preview()
-        #sleep(2)
-        #camera.capture(filename)
         print 'PiCam photo capture started.'
-        popenString = './rpi_photo.sh'
-        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        std_out, std_err = popenCommand.communicate()
-        status = std_out.strip('\n')
-        error = std_err.strip('\n')
+
+        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        filename = 'media/photos/RPI-' + timestamp + '.jpg'
+        camera.start_preview()
+        sleep(2)
+        camera.capture(filename)
+
+        #popenString = './rpi_photo.sh'
+        #popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #std_out, std_err = popenCommand.communicate()
+        #status = std_out.strip('\n')
+        #error = std_err.strip('\n')
+
         print 'PiCam photocapture finished.'
     elif camType == 'up':
         print 'Up-facing photo capture started.'
@@ -85,17 +88,20 @@ def capture_photo(camType):
 
 def capture_video(camType, vidLength):
     if camType == 'rpi':
-        #timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
-        #filename = 'media/videos/RPI-' + timestamp + '.h264'
-        #camera.start_recording(filename)
-        #camera.wait_recording(vidLength)
-        #camera.stop_recording()
         print 'PiCam video capture started.'
-        popenString = './rpi_video.sh ' + str(vidLength)
-        popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        std_out, std_err = popenCommand.communicate()
-        status = std_out.strip('\n')
-        error = std_err.strip('\n')
+
+        timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
+        filename = 'media/videos/RPI-' + timestamp + '.h264'
+        camera.start_recording(filename)
+        camera.wait_recording(vidLength)
+        camera.stop_recording()
+
+        #popenString = './rpi_video.sh ' + str(vidLength)
+        #popenCommand = subprocess.Popen([popenString], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #std_out, std_err = popenCommand.communicate()
+        #status = std_out.strip('\n')
+        #error = std_err.strip('\n')
+
         print 'PiCam video capture finished.'
     elif camType == 'up':
         print 'Up-facing video capture started.'
