@@ -34,6 +34,8 @@ camPi = 'rpi'
 camDown = 'down'
 camUp = 'up'
 camera = picamera.PiCamera()
+camera.resolution = (2592, 1944)
+camera.framerate = 15
 
 
 def serial_receive(serialData):
@@ -68,7 +70,7 @@ def capture_photo(camType):
         #status = std_out.strip('\n')
         #error = std_err.strip('\n')
 
-        print 'PiCam photocapture finished.'
+        print 'PiCam photo capture finished.'
     elif camType == 'up':
         print 'Up-facing photo capture started.'
         popenString = './webcam_photo.sh 0'
@@ -93,8 +95,11 @@ def capture_video(camType, vidLength):
 
         timestamp = datetime.datetime.now().strftime("%m%d%Y-%H%M%S")
         filename = 'media/videos/RPI-' + timestamp + '.h264'
+        camera.start_preview()
+        sleep(2)
         camera.start_recording(filename)
         camera.wait_recording(vidLength)
+        camera.stop_preview()
         camera.stop_recording()
 
         #popenString = './rpi_video.sh ' + str(vidLength)
