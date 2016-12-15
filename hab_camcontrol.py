@@ -147,7 +147,8 @@ def takeoff_capture():
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
-                        print 'Command received.'
+                        print 'Command received (T)'
+                        print habOutput
                         habCommand = serial_receive(habOutput)
                         if habCommand == '0':
                             print 'RPi: Phase termination signal received.'
@@ -183,7 +184,8 @@ def peak_capture():
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
-                        print 'Command received.'
+                        print 'Command received (P)'
+                        print habOutput
                         habCommand = serial_receive(habOutput)
                         if habCommand == '0':
                             print 'RPi: Phase termination signal received.'
@@ -222,7 +224,8 @@ def landing_capture():
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
-                        print 'Command received.'
+                        print 'Command received (L)'
+                        print habOutput
                         habCommand = serial_receive(habOutput)
                         if habCommand == '0':
                             print 'RPi: Phase termination signal received.'
@@ -249,7 +252,8 @@ while programStart is False:
         habOutput = habSerial.readline()[:-2]
         if habOutput:
             if habOutput[0] == '$':
-                print 'Command received.'
+                print 'Command received (P)'
+                print habOutput
                 habCommand = serial_receive(habOutput)
                 if habCommand == '0':
                     habSerial.write('$0')
@@ -280,7 +284,8 @@ while True:
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
-                        print 'Command received.'
+                        print 'Command received (M)'
+                        print habOutput
                         habCommand = serial_receive(habOutput)
                         if habCommand == '1':
                             print '---> ENTERING TAKEOFF CAPTURE <--'
