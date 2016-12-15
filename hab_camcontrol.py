@@ -149,8 +149,8 @@ def takeoff_capture():
                         print habOutput
                             
             capture_photo(camPi)
-            sleep(1)
-            capture_photo(camUp)
+            #sleep(1)
+            #capture_photo(camUp)
             sleep(10)
 
         print 'Down-facing video capture finished.'
@@ -183,8 +183,8 @@ def peak_capture():
                         print habOutput
                         
             capture_photo(camPi)
-            sleep(1)
-            capture_photo(camDown)
+            #sleep(1)
+            #capture_photo(camDown)
             sleep(10)
 
         print 'Up-facing video capture finished.'
@@ -220,8 +220,8 @@ def landing_capture():
                         print habOutput
                     
             capture_photo(camPi)
-            sleep(1)
-            capture_photo(camUp)
+            #sleep(1)
+            #capture_photo(camUp)
             sleep(10)
 
         print 'Down-facing video capture finished.'
@@ -277,4 +277,3 @@ while True:
                         print '---> EXITING LANDING CAPTURE <--'
                 else:
                     print habOutput
-
