@@ -42,21 +42,6 @@ global videoStart
 videoStart = timer()
 
 
-def serial_receive(serialData):
-    if serialData[0] == '$':
-        if serialData[1] == '0':
-            return '0'
-        elif serialData[1] == '1':
-            return '1'
-        elif serialData[1] == '2':
-            return '2'
-        elif serialData[1] == '3':
-            return '3'
-        else:
-            print 'Invalid serial command received.'
-            return '-1'
-
-
 def capture_photo(camType):
     if camType == 'rpi':
         print 'PiCam photo capture started.'
@@ -186,12 +171,14 @@ def peak_capture():
                     if habOutput[0] == '$':
                         print 'Command received (P)'
                         print habOutput
-                        habCommand = serial_receive(habOutput)
-                        if habCommand == '0':
+                        #habCommand = serial_receive(habOutput)
+                        if habOutput[1] == '0':
                             print 'RPi: Phase termination signal received.'
                             continueCapture = False
-                        elif habCommand == '-1':
+                        else:
                             print 'INVALID COMMAND RECEIVED.'
+                        #elif habCommand == '-1':
+                            #print 'INVALID COMMAND RECEIVED.'
                     else:
                         print habOutput
                         
@@ -226,12 +213,14 @@ def landing_capture():
                     if habOutput[0] == '$':
                         print 'Command received (L)'
                         print habOutput
-                        habCommand = serial_receive(habOutput)
-                        if habCommand == '0':
+                        #habCommand = serial_receive(habOutput)
+                        if habOutput[1] == '0':
                             print 'RPi: Phase termination signal received.'
                             continueCapture = False
-                        elif habCommand == '-1':
+                        else:
                             print 'INVALID COMMAND RECEIVED.'
+                        #elif habCommand == '-1':
+                            #print 'INVALID COMMAND RECEIVED.'
                     else:
                         print habOutput
                     
@@ -254,13 +243,15 @@ while programStart is False:
             if habOutput[0] == '$':
                 print 'Command received (P)'
                 print habOutput
-                habCommand = serial_receive(habOutput)
-                if habCommand == '0':
+                #habCommand = serial_receive(habOutput)
+                if habOutput[1] == '0':
                     habSerial.write('$0')
                     programStart = True
                     break
-                elif habCommand == '-1':
+                else:
                     print 'INVALID COMMAND RECEIVED.'
+                #elif habCommand == '-1':
+                    #print 'INVALID COMMAND RECEIVED.'
             else:
                 print habOutput
 
@@ -286,16 +277,16 @@ while True:
                     if habOutput[0] == '$':
                         print 'Command received (M)'
                         print habOutput
-                        habCommand = serial_receive(habOutput)
-                        if habCommand == '1':
+                        #habCommand = serial_receive(habOutput)
+                        if habOutput[1] == '1':
                             print '---> ENTERING TAKEOFF CAPTURE <--'
                             takeoff_capture()
                             print '---> EXITING TAKEOFF CAPTURE <--'
-                        elif habCommand == '2':
+                        elif habOutput[1] == '2':
                             print '---> ENTERING PEAK CAPTURE <--'
                             peak_capture()
                             print '---> EXITING PEAK CAPTURE <--'
-                        elif habCommand == '3':
+                        elif habOutput[1] == '3':
                             print '---> ENTERING LANDING CAPTURE <--'
                             landing_capture()
                             print '---> EXITING LANDING CAPTURE <--'
