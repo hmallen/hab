@@ -147,6 +147,7 @@ def takeoff_capture():
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
+                        print 'Command received.'
                         habCommand = serial_receive(habOutput)
                         if habCommand == '0':
                             print 'RPi: Phase termination signal received.'
@@ -182,6 +183,7 @@ def peak_capture():
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
+                        print 'Command received.'
                         habCommand = serial_receive(habOutput)
                         if habCommand == '0':
                             print 'RPi: Phase termination signal received.'
@@ -220,6 +222,7 @@ def landing_capture():
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
+                        print 'Command received.'
                         habCommand = serial_receive(habOutput)
                         if habCommand == '0':
                             print 'RPi: Phase termination signal received.'
@@ -243,22 +246,23 @@ def landing_capture():
 programStart = False
 while programStart is False:
     if habSerial.inWaiting() > 0:
-        while habSerial.inWaiting() > 0:
-            habOutput = habSerial.readline()[:-2]
-            if habOutput:
-                if habOutput[0] == '$':
-                    habCommand = serial_receive(habOutput)
-                    if habCommand == '0':
-                        habSerial.write('$0')
-                        programStart = True
-                        break
-                    elif habCommand == '-1':
-                        print 'INVALID COMMAND RECEIVED.'
-                else:
-                    print habOutput
+        habOutput = habSerial.readline()[:-2]
+        if habOutput:
+            if habOutput[0] == '$':
+                print 'Command received.'
+                habCommand = serial_receive(habOutput)
+                if habCommand == '0':
+                    habSerial.write('$0')
+                    programStart = True
+                    break
+                elif habCommand == '-1':
+                    print 'INVALID COMMAND RECEIVED.'
+            else:
+                print habOutput
 
 while True:
     if (timer() - videoStart) > 120:
+        # Will prevent read of incoming serial data
         print '--> MAIN PHOTO CAPTURE <--'
         capture_photo(camPi)
         sleep(1)
@@ -276,6 +280,7 @@ while True:
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
+                        print 'Command received.'
                         habCommand = serial_receive(habOutput)
                         if habCommand == '1':
                             print '---> ENTERING TAKEOFF CAPTURE <--'
