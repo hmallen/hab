@@ -20,11 +20,17 @@ camera.framerate = 15
 global videoStartDown, videoStartUp
 videoStartDown = -120
 videoStartUp = -120
-#global camDownActive, camUpActive
 camDownActive = False
 camUpActive = False
 
 captureInterval = 30
+takeoffMaxDuration = 600
+peakMaxDuration = 900
+landingMaxDuration = 7200
+
+takeoffStart = 0
+peakStart = 0
+landingStart = 0
 
 ######## MODE #########
 # 0 = Regular capture #
@@ -149,10 +155,13 @@ while True:
                         programMode = 0
                     elif habOutput[1] == '1':
                         programMode = 1
+                        takeoffStart = timer()
                     elif habOutput[1] == '2':
                         programMode = 2
+                        peakStart = timer()
                     elif habOutput[1] == '3':
                         programMode = 3
+                        landingStart = timer()
                 else:
                     print habOutput
 
@@ -183,6 +192,9 @@ while True:
             capture_photo(camUp)
             sleep(1)
 
+        if (timer() - takeoffStart) > takeoffMaxDuration:
+            programMode = 0
+
     elif programMode == 2:  # Peak capture
         if (timer() - videoStartDown) > 120 and camDownActive == True:
             camDownActive = False
@@ -195,6 +207,9 @@ while True:
         if camDownActive == False:
             capture_photo(camDown)
             sleep(1)
+
+        if (timer() - peakStart) > peakMaxDuration:
+            programMode = 0
 
     elif programMode == 3:  # Landing capture
         if (timer() - videoStartUp) > 10 and camUpActive == False and camDownActive == False:
@@ -218,8 +233,10 @@ while True:
             capture_photo(camUp)
             sleep(1)
 
+        if (timer() - landingStart) > landingMaxDuration:
+            programMode = 0
+
     capture_photo(camPi)
     sleep(1)
 
-    #sleep(captureInterval) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     # Also implement timeout breaks from current phase
