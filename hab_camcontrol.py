@@ -6,6 +6,7 @@ import serial
 import subprocess
 from time import sleep
 from timeit import default_timer as timer
+import sys
 
 habSerial = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
@@ -120,130 +121,134 @@ def capture_video(camType, vidLength):
 
         videoStartDown = timer()
 
+try:
+    while habSerial.inWaiting() > 0:
+        habSerial.readline()
+        sleep(0.005)
 
-while habSerial.inWaiting() > 0:
-    habSerial.readline()
-    sleep(0.005)
-
-programStart = False
-while programStart is False:
-    if habSerial.inWaiting() > 0:
-        habOutput = habSerial.readline()[:-2]
-        if habOutput:
-            if habOutput[0] == '$':
-                print 'Command received (Start): ' + habOutput
-                if habOutput[1] == '0':
-                    habSerial.write('$0')
-                    programStart = True
-                    break
-                else:
-                    print 'INVALID COMMAND RECEIVED.'
-            else:
-                print habOutput
-
-while True:
-    loopStart = timer()
-
-    while (timer() - loopStart) < captureInterval:
-        # Regular serial reads to read incoming commands
+    programStart = False
+    while programStart is False:
         if habSerial.inWaiting() > 0:
             habOutput = habSerial.readline()[:-2]
             if habOutput:
                 if habOutput[0] == '$':
-                    print 'Command received (Main): ' + habOutput
+                    print 'Command received (Start): ' + habOutput
                     if habOutput[1] == '0':
-                        programMode = 0
-                        print 'Entering main phase.'
-                    elif habOutput[1] == '1':
-                        programMode = 1
-                        takeoffStart = timer()
-                        print 'Entering takeoff phase.'
-                    elif habOutput[1] == '2':
-                        programMode = 2
-                        peakStart = timer()
-                        print 'Entering peak phase.'
-                    elif habOutput[1] == '3':
-                        programMode = 3
-                        landingStart = timer()
-                        print 'Entering landing phase.'
+                        habSerial.write('$0')
+                        programStart = True
+                        break
+                    else:
+                        print 'INVALID COMMAND RECEIVED.'
                 else:
                     print habOutput
 
-    # Mode-specific program functions
-    if programMode == 0:    # Regular capture
-        if (timer() - videoStartDown) > 120 and camDownActive == True:
-            camDownActive = False
-        if (timer() - videoStartUp) > 120 and camUpActive == True:
-            camUpActive = False
+    while True:
+        loopStart = timer()
 
-        if camDownActive == False:
-            capture_photo(camDown)
-            sleep(1)
-        if camUpActive == False:
-            capture_photo(camUp)
-            sleep(1)
+        while (timer() - loopStart) < captureInterval:
+            # Regular serial reads to read incoming commands
+            if habSerial.inWaiting() > 0:
+                habOutput = habSerial.readline()[:-2]
+                if habOutput:
+                    if habOutput[0] == '$':
+                        print 'Command received (Main): ' + habOutput
+                        if habOutput[1] == '0':
+                            programMode = 0
+                            print 'Entering main phase.'
+                        elif habOutput[1] == '1':
+                            programMode = 1
+                            takeoffStart = timer()
+                            print 'Entering takeoff phase.'
+                        elif habOutput[1] == '2':
+                            programMode = 2
+                            peakStart = timer()
+                            print 'Entering peak phase.'
+                        elif habOutput[1] == '3':
+                            programMode = 3
+                            landingStart = timer()
+                            print 'Entering landing phase.'
+                    else:
+                        print habOutput
 
-    elif programMode == 1:  # Takeoff capture
-        if (timer() - videoStartDown) > 120 and camDownActive == True:
-            camDownActive = False
-        if (timer() - videoStartUp) > 120 and camUpActive == True:
-            camUpActive = False
+        # Mode-specific program functions
+        if programMode == 0:    # Regular capture
+            if (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
+            if (timer() - videoStartUp) > 120 and camUpActive == True:
+                camUpActive = False
 
-        if camDownActive == False and camUpActive == False:
-            capture_video(camDown, 120)
-            sleep(1)
-        if camUpActive == False:
-            capture_photo(camUp)
-            sleep(1)
+            if camDownActive == False:
+                capture_photo(camDown)
+                sleep(1)
+            if camUpActive == False:
+                capture_photo(camUp)
+                sleep(1)
 
-        if (timer() - takeoffStart) > takeoffMaxDuration:
-            programMode = 0
-            print 'Takeoff timeout. Entering main phase.'
+        elif programMode == 1:  # Takeoff capture
+            if (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
+            if (timer() - videoStartUp) > 120 and camUpActive == True:
+                camUpActive = False
 
-    elif programMode == 2:  # Peak capture
-        if (timer() - videoStartDown) > 120 and camDownActive == True:
-            camDownActive = False
-        if (timer() - videoStartUp) > 120 and camUpActive == True:
-            camUpActive = False
+            if camDownActive == False and camUpActive == False:
+                capture_video(camDown, 120)
+                sleep(1)
+            if camUpActive == False:
+                capture_photo(camUp)
+                sleep(1)
 
-        if camUpActive == False and camDownActive == False:
-            capture_video(camUp, 120)
-            sleep(1)
-        if camDownActive == False:
-            capture_photo(camDown)
-            sleep(1)
+            if (timer() - takeoffStart) > takeoffMaxDuration:
+                programMode = 0
+                print 'Takeoff timeout. Entering main phase.'
 
-        if (timer() - peakStart) > peakMaxDuration:
-            programMode = 0
-            print 'Peak timeout. Entering main phase.'
+        elif programMode == 2:  # Peak capture
+            if (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
+            if (timer() - videoStartUp) > 120 and camUpActive == True:
+                camUpActive = False
 
-    elif programMode == 3:  # Landing capture
-        if (timer() - videoStartUp) > 10 and camUpActive == False and camDownActive == False:
-            capture_video(camUp, 10)
-            sleep(1)
-            camUpActive = True
-        elif (timer() - videoStartUp) > 10 and camUpActive == True:
-            camUpActive = False
+            if camUpActive == False and camDownActive == False:
+                capture_video(camUp, 120)
+                sleep(1)
+            if camDownActive == False:
+                capture_photo(camDown)
+                sleep(1)
 
-        if (timer() - videoStartDown) > 120 and camDownActive == False and camUpActive == False:
-            capture_video(camDown, 120)
-            sleep(1)
-            camDownActive = True
-        elif (timer() - videoStartDown) > 120 and camDownActive == True:
-            camDownActive = False
+            if (timer() - peakStart) > peakMaxDuration:
+                programMode = 0
+                print 'Peak timeout. Entering main phase.'
 
-        if camDownActive == False:
-            capture_photo(camDown)
-            sleep(1)
-        elif camUpActive == False:
-            capture_photo(camUp)
-            sleep(1)
+        elif programMode == 3:  # Landing capture
+            if (timer() - videoStartUp) > 10 and camUpActive == False and camDownActive == False:
+                capture_video(camUp, 10)
+                sleep(1)
+                camUpActive = True
+            elif (timer() - videoStartUp) > 10 and camUpActive == True:
+                camUpActive = False
 
-        if (timer() - landingStart) > landingMaxDuration:
-            programMode = 0
-            print 'Landing timeout. Entering main phase.'
+            if (timer() - videoStartDown) > 120 and camDownActive == False and camUpActive == False:
+                capture_video(camDown, 120)
+                sleep(1)
+                camDownActive = True
+            elif (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
 
-    capture_photo(camPi)
-    sleep(1)
+            if camDownActive == False:
+                capture_photo(camDown)
+                sleep(1)
+            elif camUpActive == False:
+                capture_photo(camUp)
+                sleep(1)
 
-    # Also implement timeout breaks from current phase
+            if (timer() - landingStart) > landingMaxDuration:
+                programMode = 0
+                print 'Landing timeout. Entering main phase.'
+
+        capture_photo(camPi)
+        sleep(1)
+
+        # Also implement timeout breaks from current phase
+
+except (KeyboardInterrupt, SystemExit):
+    habSerial.close()
+    sys.exit()
