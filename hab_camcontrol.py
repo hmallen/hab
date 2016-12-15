@@ -37,6 +37,8 @@ camera = picamera.PiCamera()
 camera.resolution = (2592, 1944)
 camera.framerate = 15
 
+global
+
 
 def serial_receive(serialData):
     if serialData[0] == '$':
@@ -142,6 +144,7 @@ def takeoff_capture():
                     if habOutput[0] == '$':
                         habCommand = serial_receive(habOutput)
                         if habCommand == '0':
+                            print 'RPi: Phase termination signal received.'
                             continueCapture = False
                         elif habCommand == '-1':
                             print 'INVALID COMMAND RECEIVED.'
@@ -176,6 +179,7 @@ def peak_capture():
                     if habOutput[0] == '$':
                         habCommand = serial_receive(habOutput)
                         if habCommand == '0':
+                            print 'RPi: Phase termination signal received.'
                             continueCapture = False
                         elif habCommand == '-1':
                             print 'INVALID COMMAND RECEIVED.'
@@ -213,6 +217,7 @@ def landing_capture():
                     if habOutput[0] == '$':
                         habCommand = serial_receive(habOutput)
                         if habCommand == '0':
+                            print 'RPi: Phase termination signal received.'
                             continueCapture = False
                         elif habCommand == '-1':
                             print 'INVALID COMMAND RECEIVED.'
