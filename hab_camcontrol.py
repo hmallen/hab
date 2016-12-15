@@ -250,5 +250,7 @@ try:
         # Also implement timeout breaks from current phase
 
 except (KeyboardInterrupt, SystemExit):
+    while habSerial.inWaiting() > 0:
+        habSerial.readline()
     habSerial.close()
     sys.exit()
