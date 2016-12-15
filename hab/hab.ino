@@ -43,33 +43,23 @@
   TO DO:
   - Add servo selfie deployment
   - MUST FIND FUNCTION TO CONFIRM GPRS POWER TO RESTART IF NECESSARY!!!! ****
-  - INTEGRATE ARDUINO-->RPI COMMUNICATION ****
   - Confirm that GPS coordinates are sent with highest precision (i.e. 6 floating point decimals)
   - Add check and retry for MS5607 data validity (every so often a bad value appears)
   - Add DS1820B data validity check to prevent accidental relay trip
   -- Also add startup check function (i.e. In initSensors())
   - On SMS startup, input current SLP to provide altimeter offset????
-  - Handling of gas sensor logging after sensor shut-off
+  - Handling of gas sensor logging after sensor shut-off!!!!
   - Determine pressure value to trigger peak capture (Reference press vs. alt table & balloon data)
-  - Create test interrupt functions for pins 44-47 (Trigger fake alt/checkChange()/etc values)
-  -- TEST INPUT VALUES FOR PIN (i.e. INPUT_PULLUP STATE @ 1/0)
-  - TEST ARDUINO-->RPI SERIAL COMMUNICATION TRIGGERS
   - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
   - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
   - Add RTTY test TX before SMS confirmation?
   - Add MS5607 altitude????
-  - Stop reading gas sensors after descent?
-  - Make sure calls for buzzer use new variable ("buzzerRelay")
-  - Add exception for sensor initialization if setupComplete is true??
-  - Change "ada..." to "dof" for consistency
-  - Add servo/picture taking function
   - Confirm that boolean argument in smsPower function actually necessary
   - Test if SMS stores in buffer when no signal and sends when reconnected
   - Add check to confirm GPRS is powered on (Need to find suitable function)
   -- Also check if similar function to indicate network connectivity
   - Gather sender number and log incoming/outgoing SMS messages to SD card
   - Consider setting sampling rate based on theoretical ascent rate
-  - Cut-down
   - Change global variables to functions returning pointer arrays
 
   CONSIDERATIONS:
@@ -1215,13 +1205,20 @@ bool readMS5607() {
 
 bool readGas() {
   int gasPinLength = sizeof(gasPins) / 2;
-  for (int x = 0; x < gasPinLength; x++) {
-    gasValuesLast[x] = gasValues[x];
-  }
+  if (!descentPhase) {
+    for (int x = 0; x < gasPinLength; x++) {
+      gasValuesLast[x] = gasValues[x];
+    }
 
-  for (int x = 0; x < gasPinLength; x++) {
-    gasValues[x] = (float)map(analogRead(gasPins[x]), 0, 1023, 0, 1000) / 10.0;
-    delay(10);
+    for (int x = 0; x < gasPinLength; x++) {
+      gasValues[x] = (float)map(analogRead(gasPins[x]), 0, 1023, 0, 1000) / 10.0;
+      delay(10);
+    }
+  }
+  else {
+    for (int x = 0; x < gasPinLength; x++) {
+      gasValues[x] = 0.0;
+    }
   }
 
   if (gasValues != gasValuesLast) return true;
@@ -1328,6 +1325,7 @@ void checkChange() {
   if (!debugHeaterOff) {
     if (!landingPhase) {
       if (dsValid && dsTemp < HEATERTRIGGERTEMP && !heaterStatus || !debugHeaterState && !heaterStatus) {
+        if (!debugHeaterState) debugBlink();
         digitalWrite(heaterRelay, HIGH);
         heaterStatus = true;
         char debugChar[64];
@@ -1339,6 +1337,7 @@ void checkChange() {
         logDebug(debugChar);
       }
       else if (dsValid && dsTemp >= HEATERTRIGGERTEMP && heaterStatus || !debugHeaterState && heaterStatus) {
+        if (!debugHeaterState) debugBlink();
         digitalWrite(heaterRelay, LOW);
         heaterStatus = false;
         char debugChar[64];
@@ -1353,7 +1352,7 @@ void checkChange() {
   }
   else if (landingPhase && heaterStatus) digitalWrite(heaterRelay, LOW);
 
-  if (!descentPhase) {
+  if (!peakCapture) {
     if (!launchCapture) {
       Serial.println("$1");
       digitalWrite(gpsReadyLED, HIGH);
@@ -1362,6 +1361,7 @@ void checkChange() {
     }
     else if (launchCapture && resetHandler) {
       if ((dofAlt - dofAltOffset) > LAUNCHCAPTURETHRESHOLD || !debugState) {
+        if (!debugState) debugBlink();
         Serial.println("$0");
         digitalWrite(gpsReadyLED, LOW);
         resetHandler = false;
@@ -1369,13 +1369,18 @@ void checkChange() {
     }
     else if (launchCapture && !resetHandler && !peakCapture) {
       if (dofPressure < PEAKCAPTURETHRESHOLD || !debugState) {
+        if (!debugState) debugBlink();
         Serial.println("$2");
         digitalWrite(programStartLED, HIGH);
         digitalWrite(photoDeployPin, LOW);  // DEPLOYMENT OF SPACE SELFIE!!!!
         photoDeployStart = millis();
         peakCapture = true;
         resetHandler = true;
-        if (debugMode) Serial.println("PEAK CAPTURE TRIGGERED.");
+        if (debugMode) {
+          Serial.println();
+          Serial.println("Peak capture triggered.");
+          Serial.println();
+        }
       }
     }
   }
@@ -1412,19 +1417,21 @@ void checkChange() {
     digitalWrite(photoDeployPin, HIGH);
     selfieRetract = true;
   }
+  else if (selfieRetract == false && !debugState) {
+    for (int x = 0; x < 3; x++) {
+      debugBlink();
+    }
+  }
   else if (selfieRetract == true && !debugState) {
-    //if (!debugState) Serial.println("Executing debug trigger for descent phase.");
     debugBlink();
     descentPhase = true;
   }
-
   if (gpsChanges >= 10) descentPhase = true;
   else if (dofChanges >= 10) descentPhase = true;
   else if (gpsChanges >= 5 && dofChanges >= 5) descentPhase = true;
   else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
 
-  if (descentPhase) {
-    if (debugMode) Serial.println("DESCENT PHASE TRIGGERED.");
+  if (descentPhase && !landingPhase && resetHandler) {
     Serial.println("$0");
     digitalWrite(programStartLED, LOW);
     resetHandler = false;
@@ -1450,36 +1457,32 @@ void checkChange() {
   }
 
   else if (descentPhase && !landingPhase) {
-    static bool modeSkip = false;
     if (!landingCapture) {
-      if (!debugState) debugBlink();
       if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugState) {
-        //if (!debugState) Serial.println("Executing debug trigger for landing capture.");
+        if (!debugState) debugBlink();
         Serial.println("$3");
         landingCapture = true;
         resetHandler = true;
       }
     }
+
     else if (landingCapture && !debugState) {
       debugBlink();
       landingPhase = true;
     }
-
     if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges = 0;
     else if (gpsAltChange <= GPSCHANGETHRESHOLD) gpsChanges++;
-
     if (dofAltChange > DOFALTCHANGETHRESHOLD) dofChanges = 0;
     else if (dofAltChange <= DOFALTCHANGETHRESHOLD) dofChanges++;
-
     if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) ms5607Changes = 0;
     else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
-    else if (gpsChanges >= 10) landingPhase = true;
+
+    if (gpsChanges >= 10) landingPhase = true;
     else if (dofChanges >= 10) landingPhase = true;
     else if (gpsChanges >= 5 && dofChanges >= 5) landingPhase = true;
     else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) landingPhase = true;
 
     if (landingPhase) {
-      if (debugMode) Serial.println("LANDING PHASE TRIGGERED.");
       Serial.println("$0");
       digitalWrite(gpsReadyLED, HIGH);
       resetHandler = false;
@@ -1487,6 +1490,7 @@ void checkChange() {
       if (debugMode) {
         Serial.println();
         Serial.print("Landing phase triggered. Sending location via SMS...");
+        Serial.println();
       }
 
       Serial1.print("AT+CMGS=\"");
