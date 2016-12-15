@@ -116,7 +116,6 @@ def capture_video(camType, vidLength):
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
-        print 'Up-facing video capture finished.'
     elif camType == 'down':
         print 'Down-facing video capture started.'
         popenString = './webcam_video.sh 1 ' + str(vidLength)
@@ -124,7 +123,6 @@ def capture_video(camType, vidLength):
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
-        print 'Down-facing video capture finished.'
 
 
 def takeoff_capture():
@@ -155,6 +153,7 @@ def takeoff_capture():
             capture_photo(camUp)
             sleep(10)
 
+        print 'Down-facing video capture finished.'
         startTime = timer()
         if (startTime - startTimeStatic) > takeoffBreakTime:
             continueCapture = False
@@ -188,6 +187,7 @@ def peak_capture():
             capture_photo(camDown)
             sleep(10)
 
+        print 'Up-facing video capture finished.'
         startTime = timer()
         if (startTime - startTimeStatic) > takeoffBreakTime:
             continueCapture = False
@@ -201,7 +201,8 @@ def landing_capture():
 
     while continueCapture is True:
         capture_video(camUp, 10)
-        sleep(1)
+        sleep(11)
+        print 'Up-facing video capture finished.'
         capture_video(camDown, 120)
         sleep(1)
 
@@ -223,6 +224,7 @@ def landing_capture():
             capture_photo(camUp)
             sleep(10)
 
+        print 'Down-facing video capture finished.'
         startTime = timer()
         if (startTime - startTimeStatic) > takeoffBreakTime:
             continueCapture = False
