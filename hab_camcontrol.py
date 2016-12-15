@@ -255,6 +255,8 @@ while programStart is False:
             else:
                 print habOutput
 
+videoStart = -120
+
 while True:
     if (timer() - videoStart) > 120:
         # Will prevent read of incoming serial data
