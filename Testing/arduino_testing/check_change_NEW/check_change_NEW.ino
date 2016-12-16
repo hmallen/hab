@@ -1,6 +1,3 @@
-// Add gas pin stuff
-// Add LED stuff
-
 void checkChange() {
   static bool heaterStatus = digitalRead(heaterRelay);
   float gpsAltChange = gpsAltLast - gpsAlt;
