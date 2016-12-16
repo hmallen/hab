@@ -116,7 +116,7 @@
 #define LAUNCHCAPTURETHRESHOLD 1000.0
 #define PEAKCAPTURETHRESHOLD 500.0  // NEED TO CHANGE!!!!
 #define LANDINGCAPTURETHRESHOLD 3000.0
-#define PHOTODEPLOYTIME 240
+#define PHOTODEPLOYTIME 240000
 
 //#define DAYLIGHTSAVINGS
 
@@ -1446,7 +1446,7 @@ void checkChange() {
     digitalWrite(gasRelay, LOW);  // Shut-off gas sensors to save power
   }
 
-  else if (descentPhase && !landingPhase && selfieRetract) {
+  else if (descentPhase && !landingPhase && selfieRetract && !resetHandler) {
     if (!landingCapture) {
       if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugState) {
         if (!debugState) debugBlink();
@@ -1461,18 +1461,6 @@ void checkChange() {
       debugBlink();
       landingPhase = true;
     }
-
-    // RETRACTION OF SPACE SELFIE!!!!
-    if (!selfieRetract && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
-      digitalWrite(photoDeployPin, HIGH);
-      selfieRetract = true;
-    }
-    else if (!selfieRetract && !debugState) {
-      for (int x = 0; x < 3; x++) {
-        debugBlink();
-      }
-    }
-
     if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges = 0;
     else if (gpsAltChange <= GPSCHANGETHRESHOLD) gpsChanges++;
     if (dofAltChange > DOFALTCHANGETHRESHOLD) dofChanges = 0;
@@ -1520,9 +1508,19 @@ void checkChange() {
       Serial.println();
     }
   }
-
   else {
     // ANY CHANGE CHECKS NECESSARY DURING LANDING PHASE
+  }
+
+  // RETRACTION OF SPACE SELFIE!!!!
+  if (!selfieRetract && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
+    digitalWrite(photoDeployPin, HIGH);
+    selfieRetract = true;
+  }
+  else if (!selfieRetract && !debugState) {
+    for (int x = 0; x < 3; x++) {
+      debugBlink();
+    }
   }
 
   gpsAltLast = gpsAlt;
