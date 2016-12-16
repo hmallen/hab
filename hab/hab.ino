@@ -1412,26 +1412,16 @@ void checkChange() {
     }
   }
 
-  // RETRACTION OF SPACE SELFIE!!!!
-  if (selfieRetract == false && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
-    digitalWrite(photoDeployPin, HIGH);
-    selfieRetract = true;
-  }
-  else if (selfieRetract == false && !debugState) {
-    for (int x = 0; x < 3; x++) {
-      debugBlink();
-    }
-  }
-  else if (selfieRetract == true && !debugState) {
-    debugBlink();
-    descentPhase = true;
-  }
   if (gpsChanges >= 10) descentPhase = true;
   else if (dofChanges >= 10) descentPhase = true;
   else if (gpsChanges >= 5 && dofChanges >= 5) descentPhase = true;
   else if (gpsChanges >= 3 && dofChanges >= 3 && ms5607Changes >= 3) descentPhase = true;
+  else if (selfieRetract == true && !debugState) {
+    debugBlink();
+    descentPhase = true;
+  }
 
-  if (descentPhase && !landingPhase && resetHandler) {
+  if (descentPhase && !landingPhase && selfieRetract && resetHandler) {
     Serial.println("$0");
     digitalWrite(programStartLED, LOW);
     resetHandler = false;
@@ -1456,20 +1446,33 @@ void checkChange() {
     digitalWrite(gasRelay, LOW);  // Shut-off gas sensors to save power
   }
 
-  else if (descentPhase && !landingPhase) {
+  else if (descentPhase && !landingPhase && selfieRetract) {
     if (!landingCapture) {
       if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugState) {
         if (!debugState) debugBlink();
         Serial.println("$3");
+        digitalWrite(gpsReadyLED, HIGH);
         landingCapture = true;
         resetHandler = true;
       }
     }
 
-    else if (landingCapture && !debugState) {
+    else if (landingCapture && selfieRetract && !debugState) {
       debugBlink();
       landingPhase = true;
     }
+
+    // RETRACTION OF SPACE SELFIE!!!!
+    if (!selfieRetract && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
+      digitalWrite(photoDeployPin, HIGH);
+      selfieRetract = true;
+    }
+    else if (!selfieRetract && !debugState) {
+      for (int x = 0; x < 3; x++) {
+        debugBlink();
+      }
+    }
+
     if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges = 0;
     else if (gpsAltChange <= GPSCHANGETHRESHOLD) gpsChanges++;
     if (dofAltChange > DOFALTCHANGETHRESHOLD) dofChanges = 0;
@@ -1484,7 +1487,7 @@ void checkChange() {
 
     if (landingPhase) {
       Serial.println("$0");
-      digitalWrite(gpsReadyLED, HIGH);
+      digitalWrite(gpsReadyLED, LOW);
       resetHandler = false;
 
       if (debugMode) {
