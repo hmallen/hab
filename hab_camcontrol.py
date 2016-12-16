@@ -132,7 +132,9 @@ try:
             habOutput = habSerial.readline()[:-2]
             if habOutput:
                 if habOutput[0] == '$':
+                    print
                     print 'Command received (Start): ' + habOutput
+                    print
                     if habOutput[1] == '0':
                         habSerial.write('$0')
                         programStart = True
@@ -151,7 +153,9 @@ try:
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
+                        print
                         print 'Command received (Main): ' + habOutput
+                        print
                         if habOutput[1] == '0':
                             programMode = 0
                             print 'Entering main phase.'
