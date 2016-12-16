@@ -1508,7 +1508,7 @@ void checkChange() {
     }
 
     // LANDING PHASE BEGINS WHEN ALTITUDE STOPS CHANGING
-    else if (resetHandler && landingCapture) {
+    else if (!resetHandler && !landingCapture) {
       // WAIT FOR ALTITUDE TO STABILIZE
       //// END LANDING CAP --> landingPhase = true
       if (gpsChanges >= 10) landingPhase = true;
@@ -2185,3 +2185,8 @@ void startupFailure() {
     delay(100);
   }
 }
+
+void ledControl(char *ledColor) {
+
+}
+
