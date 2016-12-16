@@ -1495,7 +1495,7 @@ void checkChange() {
     else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
 
     // LANDING CAPTURE BEGINS WHEN BELOW THRESHOLD ALTITUDE
-    if (!resetHandler && !landingCapture) {
+    if (resetHandler && !landingCapture) {
       // WAIT FOR ALTITUDE BELOW THRESHOLD
       //// BEGIN LANDING CAP --> landingCapture = true --> resetHandler = true
       if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugState) {
