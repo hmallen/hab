@@ -158,14 +158,18 @@ try:
                         elif habOutput[1] == '1':
                             programMode = 1
                             takeoffStart = timer()
-                            print 'Entering takeoff phase.'
+                            print 'Entering takeoff capture.'
                         elif habOutput[1] == '2':
                             programMode = 2
                             peakStart = timer()
-                            print 'Entering peak phase.'
+                            print 'Entering peak capture.'
                         elif habOutput[1] == '3':
                             programMode = 3
                             landingStart = timer()
+                            print 'Entering landing capture.'
+                        elif habOutput[1] == '4':
+                            programMode = 4
+                            captureInterval = 180
                             print 'Entering landing phase.'
                     else:
                         print habOutput
@@ -251,13 +255,27 @@ try:
                 sleep(1)
 
             if (timer() - landingStart) > landingMaxDuration:
-                programMode = 0
+                programMode = 4
+                captureInterval = 180
                 print 'Landing timeout. Entering main phase.'
+
+        elif programMode == 4:  # Landing phase
+            if (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
+                print 'Down-facing video capture finished.'
+            if (timer() - videoStartUp) > 120 and camUpActive == True:
+                camUpActive = False
+                print 'Up-facing video capture finished.'
+
+            if camDownActive == False:
+                capture_photo(camDown)
+                sleep(1)
+            if camUpActive == False:
+                capture_photo(camUp)
+                sleep(1)
 
         capture_photo(camPi)
         sleep(1)
-
-        # Also implement timeout breaks from current phase
 
 except (KeyboardInterrupt, SystemExit):
     while habSerial.inWaiting() > 0:
