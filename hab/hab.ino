@@ -618,7 +618,7 @@ void setup() {
     landingCapture = EEPROM.read(4);
     landingPhase = EEPROM.read(5);
     resetHandler = EEPROM.read(6);
-    selifieRetract = EEPROM.read(7);
+    selfieRetract = EEPROM.read(7);
 
     if (debugMode) {
       Serial.println("EEPROM Values:");
