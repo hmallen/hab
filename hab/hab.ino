@@ -1482,7 +1482,7 @@ void checkChange() {
   // DESCENT PHASE
   else if (!landingPhase) {
     // IN CASE SELFIE SERVO DIDN'T RETRACT
-    if (!selfieRetract) {
+    if (!selfieRetract && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
       digitalWrite(photoDeployPin, HIGH);
       selfieRetract = true;
     }
@@ -1495,7 +1495,7 @@ void checkChange() {
     else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
 
     // LANDING CAPTURE BEGINS WHEN BELOW THRESHOLD ALTITUDE
-    if (resetHandler && !landingCapture) {
+    if (!resetHandler && !landingCapture) {
       // WAIT FOR ALTITUDE BELOW THRESHOLD
       //// BEGIN LANDING CAP --> landingCapture = true --> resetHandler = true
       if ((dofAlt - dofAltOffset) < LANDINGCAPTURETHRESHOLD || !debugState) {
@@ -1508,7 +1508,7 @@ void checkChange() {
     }
 
     // LANDING PHASE BEGINS WHEN ALTITUDE STOPS CHANGING
-    else if (!resetHandler && !landingCapture) {
+    else if (resetHandler && !landingCapture) {
       // WAIT FOR ALTITUDE TO STABILIZE
       //// END LANDING CAP --> landingPhase = true
       if (gpsChanges >= 10) landingPhase = true;
