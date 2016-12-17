@@ -743,37 +743,37 @@ void setup() {
       Serial.println("complete.");
       Serial.println();
     }
-  }
 
-  if (digitalRead(programStartPin) == LOW) {
-    if (debugMode) Serial.print("Toggle start switch to continue...");
-    while (digitalRead(programStartPin) == LOW) {
-      digitalWrite(programStartLED, HIGH);
-      delay(500);
-      digitalWrite(programStartLED, LOW);
-      delay(500);
-    }
-  }
-
-  Serial.println("$0");
-  //if (!debugMode) {
-  if (!Serial.available()) {
-    while (!Serial.available()) {
-      ;
-    }
-  }
-  while (true) {
-    if (Serial.available()) {
-      char cameraInput[6];
-      int x = 0;
-      while (Serial.available()) {
-        char c = Serial.read();
-        cameraInput[x] = c;
-        x++;
-        delay(5);
+    if (digitalRead(programStartPin) == LOW) {
+      if (debugMode) Serial.print("Toggle start switch to continue...");
+      while (digitalRead(programStartPin) == LOW) {
+        digitalWrite(programStartLED, HIGH);
+        delay(500);
+        digitalWrite(programStartLED, LOW);
+        delay(500);
       }
-      cameraInput[x] = '\0';
-      if (cameraInput[0] == '$' && cameraInput[1] == '0') break;
+    }
+
+    Serial.println("$0");
+    //if (!debugMode) {
+    if (!Serial.available()) {
+      while (!Serial.available()) {
+        ;
+      }
+    }
+    while (true) {
+      if (Serial.available()) {
+        char cameraInput[6];
+        int x = 0;
+        while (Serial.available()) {
+          char c = Serial.read();
+          cameraInput[x] = c;
+          x++;
+          delay(5);
+        }
+        cameraInput[x] = '\0';
+        if (cameraInput[0] == '$' && cameraInput[1] == '0') break;
+      }
     }
   }
 
