@@ -42,7 +42,7 @@ landingStart = 0
 programMode = 0
 
 with open('mode_file.txt', 'r') as mode_file:
-    programFileState = mode_file.read()
+    programFileState = mode_file.read().rstrip()
 
 
 def capture_photo(camType):
@@ -125,7 +125,7 @@ def capture_video(camType, vidLength):
         videoStartDown = timer()
 
 try:
-    if (programFileState == '-1'):
+    if programFileState == '-1':
         while habSerial.inWaiting() > 0:
             habSerial.readline()
             sleep(0.005)
@@ -161,6 +161,7 @@ try:
         print 'Set to landing capture from file. [3]'
     elif programFileState == '4':
         programMode = 4
+        captureInterval = 180
         print 'Set to landing phase from file. [4]'
     else:
         print 'INVALID PROGRAM STATE READ FROM FILE'
@@ -197,8 +198,9 @@ try:
                             captureInterval = 180
                             print 'Entering landing phase.'
 
+                        programModeString = str(programMode)
                         with open('mode_file.txt', 'w') as mode_file:
-                            mode_file.write(programMode)
+                            mode_file.write(programModeString)
 
                     else:
                         print habOutput
@@ -237,7 +239,10 @@ try:
 
             if (timer() - takeoffStart) > takeoffMaxDuration:
                 programMode = 0
-                print 'Takeoff timeout. Entering main phase.'
+                programModeString = str(programMode)
+                with open('mode_file.txt', 'w') as mode_file:
+                    mode_file.write(programModeString)
+                print 'Takeoff capture timeout. Entering main phase.'
 
         elif programMode == 2:  # Peak capture
             if (timer() - videoStartDown) > 120 and camDownActive == True:
@@ -257,7 +262,10 @@ try:
 
             if (timer() - peakStart) > peakMaxDuration:
                 programMode = 0
-                print 'Peak timeout. Entering main phase.'
+                programModeString = str(programMode)
+                with open('mode_file.txt', 'w') as mode_file:
+                    mode_file.write(programModeString)
+                print 'Peak capture timeout. Entering main phase.'
 
         elif programMode == 3:  # Landing capture
             if (timer() - videoStartUp) > 10 and camUpActive == False and camDownActive == False:
@@ -286,7 +294,10 @@ try:
             if (timer() - landingStart) > landingMaxDuration:
                 programMode = 4
                 captureInterval = 180
-                print 'Landing timeout. Entering main phase.'
+                programModeString = str(programMode)
+                with open('mode_file.txt', 'w') as mode_file:
+                    mode_file.write(programModeString)
+                print 'Landing capture timeout. Entering landing phase.'
 
         elif programMode == 4:  # Landing phase
             if (timer() - videoStartDown) > 120 and camDownActive == True:
