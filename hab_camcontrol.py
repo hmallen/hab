@@ -125,7 +125,7 @@ def capture_video(camType, vidLength):
         videoStartDown = timer()
 
 try:
-    if (programFileState == '-1'):
+    if programFileState == '-1':
         while habSerial.inWaiting() > 0:
             habSerial.readline()
             sleep(0.005)
