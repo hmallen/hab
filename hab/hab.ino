@@ -41,6 +41,7 @@
   2 --> Landing phase
 
   TO DO:
+  - ADD TIMEOUT TO MAKE SURE THAT FINAL LANDING COORDINATE ARE SENT
   - ADD NECESSARY BOOLEAN SWITCHES TO RESUME WHERE LEFT AFTER REBOOT
   - ADD PHASE BOOLEAN CHANGES IF PHASE CHANGES OUT OF LOOP
   - MUST FIND FUNCTION TO CONFIRM GPRS POWER TO RESTART IF NECESSARY!!!! ****
@@ -1508,7 +1509,7 @@ void checkChange() {
     }
 
     // LANDING PHASE BEGINS WHEN ALTITUDE STOPS CHANGING
-    else if (resetHandler && !landingCapture) {
+    else if (resetHandler && landingCapture) {
       // WAIT FOR ALTITUDE TO STABILIZE
       //// END LANDING CAP --> landingPhase = true
       if (gpsChanges >= 10) landingPhase = true;
