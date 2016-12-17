@@ -197,8 +197,9 @@ try:
                             captureInterval = 180
                             print 'Entering landing phase.'
 
+                        programModeString = str(programMode)
                         with open('mode_file.txt', 'w') as mode_file:
-                            mode_file.write(programMode)
+                            mode_file.write(programModeString)
 
                     else:
                         print habOutput
