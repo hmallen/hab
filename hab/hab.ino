@@ -1492,7 +1492,7 @@ void checkChange() {
         }
 
         if (descentPhase) {
-          Serial.println("$0");
+          Serial.println("$3");
           digitalWrite(programStartLED, LOW);
           EEPROM.write(3, 1);
           if (debugMode) {
