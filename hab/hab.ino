@@ -1546,7 +1546,7 @@ void checkChange() {
     Serial1.print("m ");
     Serial1.print(gpsCourseTo);
     //Serial1.print(gpsCourseToText);
-    Serial1.print(" from launch site. ");
+    Serial1.print("deg from launch site. ");
     Serial1.print("http://maps.google.com/maps?q=HAB@");
     Serial1.print(gpsLat, 6);
     Serial1.print(",");
