@@ -44,6 +44,8 @@ programMode = 0
 with open('mode_file.txt', 'r') as mode_file:
     programFileState = mode_file.read()
 
+print programFileState
+
 
 def capture_photo(camType):
     if camType == 'rpi':
