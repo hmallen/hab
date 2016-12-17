@@ -41,6 +41,7 @@
   2 --> Landing phase
 
   TO DO:
+  - Add more EEPROM switches for all capture/phase states
   - ADD TIMEOUT TO MAKE SURE THAT FINAL LANDING COORDINATE ARE SENT
   - ADD NECESSARY BOOLEAN SWITCHES TO RESUME WHERE LEFT AFTER REBOOT
   - ADD PHASE BOOLEAN CHANGES IF PHASE CHANGES OUT OF LOOP
@@ -209,7 +210,7 @@ unsigned long buzzerStart;
 float dsTemp;
 
 // RPi Camera Triggers
-bool launchCapture = false;
+bool takeoffCapture = false;
 bool peakCapture = false;
 bool landingCapture = false;
 bool resetHandler = false;
@@ -225,8 +226,13 @@ int dofChanges = 0;
 
 // EEPROM Switches
 bool setupComplete = false; // EEPROM #0
-bool descentPhase = false;  // EEPROM #1
-bool landingPhase = false;  // EEPROM #2
+// takeoffCapture --> EEPROM #1
+// peakCapture --> EEPROM #2
+bool descentPhase = false;  // EEPROM #3
+// landingCapture --> EEPROM #4
+bool landingPhase = false;  // EEPROM #5
+// resetHandler --> EEPROM #6
+// selfieRetract --> EEPROM #7
 
 int loopCount = 1;
 unsigned long dofLoopCount = 1;
@@ -554,7 +560,7 @@ void setup() {
 
   if (digitalRead(programStartPin) == LOW) {
     if (debugMode) Serial.print("Clearing EEPROM...");
-    for (int x = 0; x < 3; x++) {
+    for (int x = 0; x < 8; x++) {
       EEPROM.update(x, 0);
     }
     for (int x = 10; x < 14; x++) {
@@ -598,10 +604,38 @@ void setup() {
   if (setupComplete) {
     digitalWrite(gpsReadyLED, HIGH);
 
-    descentPhase = EEPROM.read(1);
-    if (descentPhase) {
-      selfieRetract = true;
-      landingPhase = EEPROM.read(2);
+    // EEPROM #1 --> Takeoff capture
+    // EEPROM #2 --> Peak capture
+    // EEPROM #3 --> Descent phase
+    // EEPROM #4 --> Landing capture
+    // EEPROM #5 --> Landing phase
+    // EEPROM #6 --> Reset handler
+    // EEPROM #7 --> Selfie retract
+
+    takeoffCapture = EEPROM.read(1);
+    peakCapture = EEPROM.read(2);
+    descentPhase = EEPROM.read(3);
+    landingCapture = EEPROM.read(4);
+    landingPhase = EEPROM.read(5);
+    resetHandler = EEPROM.read(6);
+    selifieRetract = EEPROM.read(7);
+
+    if (debugMode) {
+      Serial.println("EEPROM Values:");
+      Serial.print("takeoffCapture: ");
+      Serial.println(takeoffCapture);
+      Serial.print("peakCapture: ");
+      Serial.println(peakCapture);
+      Serial.print("descentPhase: ");
+      Serial.println(descentPhase);
+      Serial.print("landingCapture: ");
+      Serial.println(landingCapture);
+      Serial.print("landingPhase: ");
+      Serial.println(landingPhase);
+      Serial.print("resetHandler: ");
+      Serial.println(resetHandler);
+      Serial.print("selfieRetract: ");
+      Serial.println(selfieRetract);
     }
 
     EEPROM.get(10, gpsLaunchLat);
@@ -742,8 +776,7 @@ void setup() {
       if (cameraInput[0] == '$' && cameraInput[1] == '0') break;
     }
   }
-  //}
-  //else {
+
   if (debugMode) {
     Serial.println("starting program.");
     Serial.println();
@@ -752,7 +785,6 @@ void setup() {
     Serial.println(F("-----------------"));
     Serial.println();
   }
-  //}
 
   EEPROM.update(0, 1);
   digitalWrite(programReadyPin, HIGH);
@@ -1390,12 +1422,14 @@ void checkChange() {
     }
 
     // LAUNCH CAPTURE ACTIVATED AUTOMATICALLY
-    if (!launchCapture) {
+    if (!takeoffCapture) {
       // START LAUNCH CAP --> resetHandler = true ["2"]
       Serial.println("$1");
       digitalWrite(gpsReadyLED, HIGH);
-      launchCapture = true;
+      takeoffCapture = true;
+      EEPROM.update(1, 1);
       resetHandler = true;
+      EEPROM.update(6, 1);
     }
 
     else {
@@ -1408,6 +1442,7 @@ void checkChange() {
           Serial.println("$0");
           digitalWrite(gpsReadyLED, LOW);
           resetHandler = false;
+          EEPROM.update(6, 0);
         }
       }
 
@@ -1424,9 +1459,12 @@ void checkChange() {
           digitalWrite(programStartLED, HIGH);
           digitalWrite(photoDeployPin, LOW);  // DEPLOYMENT OF SPACE SELFIE!!!!
           selfieRetract = false;
+          EEPROM.update(7, 0);
           photoDeployStart = millis();
           peakCapture = true;
+          EEPROM.update(2, 1);
           resetHandler = true;
+          EEPROM.update(6, 1);
           if (debugMode) {
             Serial.println();
             Serial.println("Peak capture triggered.");
@@ -1440,6 +1478,7 @@ void checkChange() {
         if (!selfieRetract && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
           digitalWrite(photoDeployPin, HIGH);
           selfieRetract = true;
+          EEPROM.update(7, 1);
         }
         // WAIT FOR DESCENT --> descentPhase = true --> resetHandler = false ["5"]
         // ZERO ALL CHANGE COUNTERS
@@ -1455,13 +1494,14 @@ void checkChange() {
         if (descentPhase) {
           Serial.println("$0");
           digitalWrite(programStartLED, LOW);
-          EEPROM.write(1, 1);
+          EEPROM.write(3, 1);
           if (debugMode) {
             Serial.println();
             Serial.println("Descent phase triggered.");
             Serial.println();
           }
           resetHandler = false;
+          EEPROM.update(6, 0);
           gpsChanges = 0;
           dofChanges = 0;
           ms5607Changes = 0;
@@ -1486,6 +1526,7 @@ void checkChange() {
     if (!selfieRetract && (millis() - photoDeployStart) > PHOTODEPLOYTIME) {
       digitalWrite(photoDeployPin, HIGH);
       selfieRetract = true;
+      EEPROM.update(7, 1);
     }
 
     // LANDING CAPTURE BEGINS WHEN BELOW THRESHOLD ALTITUDE
@@ -1497,7 +1538,9 @@ void checkChange() {
         Serial.println("$3");
         digitalWrite(gpsReadyLED, HIGH);
         landingCapture = true;
+        EEPROM.update(4, 1);
         resetHandler = true;
+        EEPROM.update(6, 1);
       }
     }
 
@@ -1529,7 +1572,9 @@ void checkChange() {
   else if (landingPhase && resetHandler) {
     Serial.println("$4");
     digitalWrite(gpsReadyLED, LOW);
+    EEPROM.update(5, 1);
     resetHandler = false;
+    EEPROM.update(6, 0);
 
     if (debugMode) {
       Serial.println();
