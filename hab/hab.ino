@@ -1504,11 +1504,11 @@ void checkChange() {
     // LANDING PHASE BEGINS WHEN ALTITUDE STOPS CHANGING
     else if (resetHandler && landingCapture) {
       if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges = 0;
-      else if (gpsAltChange <= GPSCHANGETHRESHOLD) gpsChanges++;
+      else if (abs(gpsAltChange) <= GPSCHANGETHRESHOLD) gpsChanges++;
       if (dofAltChange > DOFALTCHANGETHRESHOLD) dofChanges = 0;
-      else if (dofAltChange <= DOFALTCHANGETHRESHOLD) dofChanges++;
+      else if (abs(dofAltChange) <= DOFALTCHANGETHRESHOLD) dofChanges++;
       if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) ms5607Changes = 0;
-      else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
+      else if (abs(ms5607PressChange) <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
 
       // WAIT FOR ALTITUDE TO STABILIZE
       //// END LANDING CAP --> landingPhase = true
