@@ -1488,13 +1488,6 @@ void checkChange() {
       selfieRetract = true;
     }
 
-    if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges = 0;
-    else if (gpsAltChange <= GPSCHANGETHRESHOLD) gpsChanges++;
-    if (dofAltChange > DOFALTCHANGETHRESHOLD) dofChanges = 0;
-    else if (dofAltChange <= DOFALTCHANGETHRESHOLD) dofChanges++;
-    if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) ms5607Changes = 0;
-    else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
-
     // LANDING CAPTURE BEGINS WHEN BELOW THRESHOLD ALTITUDE
     if (!resetHandler && !landingCapture) {
       // WAIT FOR ALTITUDE BELOW THRESHOLD
@@ -1510,6 +1503,13 @@ void checkChange() {
 
     // LANDING PHASE BEGINS WHEN ALTITUDE STOPS CHANGING
     else if (resetHandler && landingCapture) {
+      if (gpsAltChange > GPSCHANGETHRESHOLD) gpsChanges = 0;
+      else if (gpsAltChange <= GPSCHANGETHRESHOLD) gpsChanges++;
+      if (dofAltChange > DOFALTCHANGETHRESHOLD) dofChanges = 0;
+      else if (dofAltChange <= DOFALTCHANGETHRESHOLD) dofChanges++;
+      if (ms5607PressChange > BAROPRESSCHANGETHRESHOLD) ms5607Changes = 0;
+      else if (ms5607PressChange <= BAROPRESSCHANGETHRESHOLD) ms5607Changes++;
+
       // WAIT FOR ALTITUDE TO STABILIZE
       //// END LANDING CAP --> landingPhase = true
       if (gpsChanges >= 10) landingPhase = true;
@@ -1527,7 +1527,7 @@ void checkChange() {
 
   // LANDING PHASE
   else if (landingPhase && resetHandler) {
-    Serial.println("$0");
+    Serial.println("$4");
     digitalWrite(gpsReadyLED, LOW);
     resetHandler = false;
 
