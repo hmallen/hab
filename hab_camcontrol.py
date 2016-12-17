@@ -41,6 +41,9 @@ landingStart = 0
 #######################
 programMode = 0
 
+with open('mode_file.txt', 'r') as mode_file:
+    programFileState = mode_file.read()
+
 
 def capture_photo(camType):
     if camType == 'rpi':
@@ -122,27 +125,45 @@ def capture_video(camType, vidLength):
         videoStartDown = timer()
 
 try:
-    while habSerial.inWaiting() > 0:
-        habSerial.readline()
-        sleep(0.005)
-
-    programStart = False
-    while programStart is False:
-        if habSerial.inWaiting() > 0:
-            habOutput = habSerial.readline()[:-2]
-            if habOutput:
-                if habOutput[0] == '$':
-                    print
-                    print 'Command received (Start): ' + habOutput
-                    print
-                    if habOutput[1] == '0':
-                        habSerial.write('$0')
-                        programStart = True
-                        break
+    if (programFileState == '-1'):
+        while habSerial.inWaiting() > 0:
+            habSerial.readline()
+            sleep(0.005)
+    
+        programStart = False
+        while programStart is False:
+            if habSerial.inWaiting() > 0:
+                habOutput = habSerial.readline()[:-2]
+                if habOutput:
+                    if habOutput[0] == '$':
+                        print
+                        print 'Command received (Start): ' + habOutput
+                        print
+                        if habOutput[1] == '0':
+                            habSerial.write('$0')
+                            programStart = True
+                            break
+                        else:
+                            print 'INVALID COMMAND RECEIVED.'
                     else:
-                        print 'INVALID COMMAND RECEIVED.'
-                else:
-                    print habOutput
+                        print habOutput
+    elif programFileState == '0':
+        programMode = 0
+        print 'Set to main phase from file. [0]'
+    elif programFileState == '1':
+        programMode = 1
+        print 'Set to takeoff capture from file. [1]'
+    elif programFileState == '2':
+        programMode = 2
+        print 'Set to peak capture from file. [2]'
+    elif programFileState == '3':
+        programMode = 3
+        print 'Set to landing capture from file. [3]'
+    elif programFileState == '4':
+        programMode = 4
+        print 'Set to landing phase from file. [4]'
+    else:
+        print 'INVALID PROGRAM STATE READ FROM FILE'
 
     while True:
         loopStart = timer()
@@ -285,4 +306,5 @@ except (KeyboardInterrupt, SystemExit):
     while habSerial.inWaiting() > 0:
         habSerial.readline()
     habSerial.close()
+    # Should I add mode_file = -1 here!?!?
     sys.exit()

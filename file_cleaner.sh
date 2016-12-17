@@ -8,4 +8,3 @@ mv media archive/$ARCHIVE
 mv logs archive/$ARCHIVE/logs
 cp -R archive/template/media/ media
 cp -R archive/template/logs/ logs
-
