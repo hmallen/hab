@@ -42,7 +42,7 @@ landingStart = 0
 programMode = 0
 
 with open('mode_file.txt', 'r') as mode_file:
-    programFileState = mode_file.read()
+    programFileState = mode_file.read().rstrip()
 
 print programFileState
 
