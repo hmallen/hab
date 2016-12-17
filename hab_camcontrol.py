@@ -15,7 +15,7 @@ camDown = 'down'
 camUp = 'up'
 
 camera = picamera.PiCamera()
-camera.resolution = (2592, 1944)
+camera.resolution = (3280, 2464)
 camera.framerate = 15
 
 global videoStartDown, videoStartUp
@@ -192,7 +192,7 @@ try:
                         elif habOutput[1] == '3':
                             programMode = 3
                             landingStart = timer()
-                            print 'Entering landing capture.'
+                            print 'Entering descent/landing capture.'
                         elif habOutput[1] == '4':
                             programMode = 4
                             captureInterval = 180
