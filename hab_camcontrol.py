@@ -161,6 +161,7 @@ try:
         print 'Set to landing capture from file. [3]'
     elif programFileState == '4':
         programMode = 4
+        captureInterval = 180
         print 'Set to landing phase from file. [4]'
     else:
         print 'INVALID PROGRAM STATE READ FROM FILE'
@@ -238,7 +239,10 @@ try:
 
             if (timer() - takeoffStart) > takeoffMaxDuration:
                 programMode = 0
-                print 'Takeoff timeout. Entering main phase.'
+                programModeString = str(programMode)
+                with open('mode_file.txt', 'w') as mode_file:
+                    mode_file.write(programModeString)
+                print 'Takeoff capture timeout. Entering main phase.'
 
         elif programMode == 2:  # Peak capture
             if (timer() - videoStartDown) > 120 and camDownActive == True:
@@ -258,7 +262,10 @@ try:
 
             if (timer() - peakStart) > peakMaxDuration:
                 programMode = 0
-                print 'Peak timeout. Entering main phase.'
+                programModeString = str(programMode)
+                with open('mode_file.txt', 'w') as mode_file:
+                    mode_file.write(programModeString)
+                print 'Peak capture timeout. Entering main phase.'
 
         elif programMode == 3:  # Landing capture
             if (timer() - videoStartUp) > 10 and camUpActive == False and camDownActive == False:
@@ -287,7 +294,10 @@ try:
             if (timer() - landingStart) > landingMaxDuration:
                 programMode = 4
                 captureInterval = 180
-                print 'Landing timeout. Entering main phase.'
+                programModeString = str(programMode)
+                with open('mode_file.txt', 'w') as mode_file:
+                    mode_file.write(programModeString)
+                print 'Landing capture timeout. Entering landing phase.'
 
         elif programMode == 4:  # Landing phase
             if (timer() - videoStartDown) > 120 and camDownActive == True:
