@@ -1,0 +1,24 @@
+Sides:
+1) Large face front
+2) Large face back
+3) Small face right side (No obstructions)
+4) Small face left side (Many obstructions -- camera, antenna, other?)
+
+Required Information:
+1) Name
+2) Phone number
+3) Email
+4) "Package harmless"
+
+Side #1 Card (Front):
+- Name/Phone Number/Email/"Package harmless"
+- ICARUS ONE
+- "Turn around for more info -->" [Held with velcro]
+Side #1 Card (Back):
+- Picture
+- Details about me and the project
+
+Side #2 Card:
+- "Science experiment"
+- "Harmless payload"
+- "See front card for details"
