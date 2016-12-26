@@ -1,47 +1,48 @@
 #!/usr/bin/env python
 
-# TO DO
-# - ????
-#
-# Photo:
-# - Regular capture from PiCam
-# - Regular capture from down-facing webcam
-# - Regular capture from up-facing webcam
-#
-# Video:
-# - Capture from down-facing webcam during takeoff phase
-# - Capture from up-facing webcam when approaching peak through ~+0:60 seconds
-#
-
 import datetime
 import picamera
 import serial
 import subprocess
 from time import sleep
 from timeit import default_timer as timer
+import sys
 
 habSerial = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
-
-# NEED TO FLUSH ALL INCOMING SERIAL DATA HERE!!!!!!!!!!!!!!!!
-
-captureInterval = 10
-takeoffBreakTime = 600
-#takeoffBreakTime = 180	# DEBUG VALUE
-peakBreakTime = 900
-#peakBreakTime = 240	# DEBUG VALUE
-landingBreakTime = 7200
-#landingBreakTime = 240	# DEBUG VALUE
 
 camPi = 'rpi'
 camDown = 'down'
 camUp = 'up'
+
 camera = picamera.PiCamera()
-camera.resolution = (2592, 1944)
+camera.resolution = (3280, 2464)
 camera.framerate = 15
 
-global videoStart
+global videoStartDown, videoStartUp
+videoStartDown = -120
+videoStartUp = -120
+camDownActive = False
+camUpActive = False
 
-videoStart = -120
+captureInterval = 30
+takeoffMaxDuration = 600
+peakMaxDuration = 900
+landingMaxDuration = 7200
+
+takeoffStart = 0
+peakStart = 0
+landingStart = 0
+
+######## MODE #########
+# 0 = Regular capture #
+# 1 = Takeoff         #
+# 2 = Peak            #
+# 3 = Landing         #
+#######################
+programMode = 0
+
+with open('mode_file.txt', 'r') as mode_file:
+    programFileState = mode_file.read().rstrip()
 
 
 def capture_photo(camType):
@@ -81,6 +82,8 @@ def capture_photo(camType):
 
 
 def capture_video(camType, vidLength):
+    global videoStartDown, videoStartUp
+
     if camType == 'rpi':
         print 'PiCam video capture started.'
 
@@ -100,6 +103,7 @@ def capture_video(camType, vidLength):
         #error = std_err.strip('\n')
 
         print 'PiCam video capture finished.'
+
     elif camType == 'up':
         print 'Up-facing video capture started.'
         popenString = './webcam_video.sh 0 ' + str(vidLength)
@@ -107,6 +111,9 @@ def capture_video(camType, vidLength):
         std_out, std_err = popenCommand.communicate()
         status = std_out.strip('\n')
         error = std_err.strip('\n')
+
+        videoStartUp = timer()
+
     elif camType == 'down':
         print 'Down-facing video capture started.'
         popenString = './webcam_video.sh 1 ' + str(vidLength)
@@ -115,183 +122,204 @@ def capture_video(camType, vidLength):
         status = std_out.strip('\n')
         error = std_err.strip('\n')
 
+        videoStartDown = timer()
 
-def takeoff_capture():
-    global videoStart
-
-    # CONTINUE CAPTURING DOWN-FACING WEBCAM VIDEO UNTIL THRESHOLD ALTITUDE ACHEIVED
-    startTime = timer()
-    startTimeStatic = startTime
-    continueCapture = True
-
-    while continueCapture is True:
-        videoStart = timer()
-        capture_video(camDown, 120)
-        sleep(1)
-        
-        while (timer() - startTime) <= 120:
+try:
+    if programFileState == '-1':
+        while habSerial.inWaiting() > 0:
+            habSerial.readline()
+            sleep(0.005)
+    
+        programStart = False
+        while programStart is False:
             if habSerial.inWaiting() > 0:
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
-                        print 'Command received (T)'
-                        print habOutput
-                        #habCommand = serial_receive(habOutput)
-                        if habOutput[0] == '0':
-                            print 'RPi: Phase termination signal received.'
-                            continueCapture = False
-                        else:
-                            print 'INVALID COMMAND RECEIVED.'
-                    else:
-                        print habOutput
-                            
-            capture_photo(camPi)
-            #sleep(1)
-            #capture_photo(camUp)
-            sleep(10)
-
-        print 'Down-facing video capture finished.'
-        startTime = timer()
-        if (startTime - startTimeStatic) > takeoffBreakTime:
-            continueCapture = False
-
-
-def peak_capture():
-    # CONTINUE CAPTURING UP-FACING WEBCAM VIDEO UNTIL DESCENT DETECTED (?+10sec?)
-    startTime = timer()
-    startTimeStatic = startTime
-    continueCapture = True
-
-    while continueCapture is True:
-        capture_video(camUp, 120)
-        sleep(1)
-
-        while (timer() - startTime) <= 120:
-            if habSerial.inWaiting() > 0:
-                habOutput = habSerial.readline()[:-2]
-                if habOutput:
-                    if habOutput[0] == '$':
-                        print 'Command received (P)'
-                        print habOutput
-                        #habCommand = serial_receive(habOutput)
+                        print
+                        print 'Command received (Start): ' + habOutput
+                        print
                         if habOutput[1] == '0':
-                            print 'RPi: Phase termination signal received.'
-                            continueCapture = False
+                            habSerial.write('$0')
+                            programStart = True
+                            break
                         else:
                             print 'INVALID COMMAND RECEIVED.'
-                        #elif habCommand == '-1':
-                            #print 'INVALID COMMAND RECEIVED.'
                     else:
                         print habOutput
-                        
-            capture_photo(camPi)
-            #sleep(1)
-            #capture_photo(camDown)
-            sleep(10)
+    elif programFileState == '0':
+        programMode = 0
+        print 'Set to main phase from file. [0]'
+    elif programFileState == '1':
+        programMode = 1
+        print 'Set to takeoff capture from file. [1]'
+    elif programFileState == '2':
+        programMode = 2
+        print 'Set to peak capture from file. [2]'
+    elif programFileState == '3':
+        programMode = 3
+        print 'Set to landing capture from file. [3]'
+    elif programFileState == '4':
+        programMode = 4
+        captureInterval = 180
+        print 'Set to landing phase from file. [4]'
+    else:
+        print 'INVALID PROGRAM STATE READ FROM FILE'
 
-        print 'Up-facing video capture finished.'
-        startTime = timer()
-        if (startTime - startTimeStatic) > takeoffBreakTime:
-            continueCapture = False
+    while True:
+        loopStart = timer()
 
-
-def landing_capture():
-    # BEGIN CAPTURE OF DOWN-FACING WEBCAM VIDEO WHEN CLOSE TO GROUND AND CONTINUE UNTIL STATIONARY
-    startTime = timer()
-    startTimeStatic = startTime
-    continueCapture = True
-
-    while continueCapture is True:
-        capture_video(camUp, 10)
-        sleep(11)
-        print 'Up-facing video capture finished.'
-        capture_video(camDown, 120)
-        sleep(1)
-
-        while (timer() - startTime) <= 120:
+        while (timer() - loopStart) < captureInterval:
+            # Regular serial reads to read incoming commands
             if habSerial.inWaiting() > 0:
                 habOutput = habSerial.readline()[:-2]
                 if habOutput:
                     if habOutput[0] == '$':
-                        print 'Command received (L)'
-                        print habOutput
-                        #habCommand = serial_receive(habOutput)
+                        print
+                        print 'Command received (Main): ' + habOutput
+                        print
                         if habOutput[1] == '0':
-                            print 'RPi: Phase termination signal received.'
-                            continueCapture = False
-                        else:
-                            print 'INVALID COMMAND RECEIVED.'
-                        #elif habCommand == '-1':
-                            #print 'INVALID COMMAND RECEIVED.'
+                            programMode = 0
+                            print 'Entering main phase.'
+                        elif habOutput[1] == '1':
+                            programMode = 1
+                            takeoffStart = timer()
+                            print 'Entering takeoff capture.'
+                        elif habOutput[1] == '2':
+                            programMode = 2
+                            peakStart = timer()
+                            print 'Entering peak capture.'
+                        elif habOutput[1] == '3':
+                            programMode = 3
+                            landingStart = timer()
+                            print 'Entering descent/landing capture.'
+                        elif habOutput[1] == '4':
+                            programMode = 4
+                            captureInterval = 180
+                            print 'Entering landing phase.'
+
+                        programModeString = str(programMode)
+                        with open('mode_file.txt', 'w') as mode_file:
+                            mode_file.write(programModeString)
+
                     else:
                         print habOutput
-                    
-            capture_photo(camPi)
-            #sleep(1)
-            #capture_photo(camUp)
-            sleep(10)
 
-        print 'Down-facing video capture finished.'
-        startTime = timer()
-        if (startTime - startTimeStatic) > takeoffBreakTime:
-            continueCapture = False
+        # Mode-specific program functions
+        if programMode == 0:    # Regular capture
+            if (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
+                print 'Down-facing video capture finished.'
+            if (timer() - videoStartUp) > 120 and camUpActive == True:
+                camUpActive = False
+                print 'Up-facing video capture finished.'
 
+            if camDownActive == False:
+                capture_photo(camDown)
+                sleep(1)
+            if camUpActive == False:
+                capture_photo(camUp)
+                sleep(1)
 
-programStart = False
-while programStart is False:
-    if habSerial.inWaiting() > 0:
-        habOutput = habSerial.readline()[:-2]
-        if habOutput:
-            if habOutput[0] == '$':
-                print 'Command received (P)'
-                print habOutput
-                #habCommand = serial_receive(habOutput)
-                if habOutput[1] == '0':
-                    habSerial.write('$0')
-                    programStart = True
-                    break
-                else:
-                    print 'INVALID COMMAND RECEIVED.'
-                #elif habCommand == '-1':
-                    #print 'INVALID COMMAND RECEIVED.'
-            else:
-                print habOutput
+        elif programMode == 1:  # Takeoff capture
+            if (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
+                print 'Down-facing video capture finished.'
+            if (timer() - videoStartUp) > 120 and camUpActive == True:
+                camUpActive = False
+                print 'Up-facing video capture finished.'
 
+            if camDownActive == False and camUpActive == False:
+                capture_video(camDown, 120)
+                sleep(1)
+                camDownActive = True
+            if camUpActive == False:
+                capture_photo(camUp)
+                sleep(1)
 
-while True:
-    if (timer() - videoStart) > 120:
-        # Will prevent read of incoming serial data
-        print '--> MAIN PHOTO CAPTURE <--'
+            if (timer() - takeoffStart) > takeoffMaxDuration:
+                programMode = 0
+                programModeString = str(programMode)
+                with open('mode_file.txt', 'w') as mode_file:
+                    mode_file.write(programModeString)
+                print 'Takeoff capture timeout. Entering main phase.'
+
+        elif programMode == 2:  # Peak capture
+            if (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
+                print 'Down-facing video capture finished.'
+            if (timer() - videoStartUp) > 120 and camUpActive == True:
+                camUpActive = False
+                print 'Up-facing video capture finished.'
+
+            if camUpActive == False and camDownActive == False:
+                capture_video(camUp, 120)
+                sleep(1)
+                camUpActive = True
+            if camDownActive == False:
+                capture_photo(camDown)
+                sleep(1)
+
+            if (timer() - peakStart) > peakMaxDuration:
+                programMode = 0
+                programModeString = str(programMode)
+                with open('mode_file.txt', 'w') as mode_file:
+                    mode_file.write(programModeString)
+                print 'Peak capture timeout. Entering main phase.'
+
+        elif programMode == 3:  # Landing capture
+            if (timer() - videoStartUp) > 10 and camUpActive == False and camDownActive == False:
+                capture_video(camUp, 10)
+                sleep(1)
+                camUpActive = True
+            elif (timer() - videoStartUp) > 10 and camUpActive == True:
+                camUpActive = False
+                print 'Up-facing video capture finished.'
+
+            if (timer() - videoStartDown) > 120 and camDownActive == False and camUpActive == False:
+                capture_video(camDown, 120)
+                sleep(1)
+                camDownActive = True
+            elif (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
+                print 'Down-facing video capture finished.'
+
+            if camDownActive == False:
+                capture_photo(camDown)
+                sleep(1)
+            elif camUpActive == False:
+                capture_photo(camUp)
+                sleep(1)
+
+            if (timer() - landingStart) > landingMaxDuration:
+                programMode = 4
+                captureInterval = 180
+                programModeString = str(programMode)
+                with open('mode_file.txt', 'w') as mode_file:
+                    mode_file.write(programModeString)
+                print 'Landing capture timeout. Entering landing phase.'
+
+        elif programMode == 4:  # Landing phase
+            if (timer() - videoStartDown) > 120 and camDownActive == True:
+                camDownActive = False
+                print 'Down-facing video capture finished.'
+            if (timer() - videoStartUp) > 120 and camUpActive == True:
+                camUpActive = False
+                print 'Up-facing video capture finished.'
+
+            if camDownActive == False:
+                capture_photo(camDown)
+                sleep(1)
+            if camUpActive == False:
+                capture_photo(camUp)
+                sleep(1)
+
         capture_photo(camPi)
         sleep(1)
-        capture_photo(camDown)
-        sleep(1)
-        capture_photo(camUp)
-        sleep(1)
-    else:
-        print 'Waiting for video capture to complete.'
-    
-    startTime = timer()
-    while (timer() - startTime) < captureInterval:
-        if (timer() - videoStart) > 120:
-            if habSerial.inWaiting() > 0:
-                habOutput = habSerial.readline()[:-2]
-                if habOutput:
-                    if habOutput[0] == '$':
-                        print 'Command received (M)'
-                        print habOutput
-                        #habCommand = serial_receive(habOutput)
-                        if habOutput[1] == '1':
-                            print '---> ENTERING TAKEOFF CAPTURE <--'
-                            takeoff_capture()
-                            print '---> EXITING TAKEOFF CAPTURE <--'
-                        elif habOutput[1] == '2':
-                            print '---> ENTERING PEAK CAPTURE <--'
-                            peak_capture()
-                            print '---> EXITING PEAK CAPTURE <--'
-                        elif habOutput[1] == '3':
-                            print '---> ENTERING LANDING CAPTURE <--'
-                            landing_capture()
-                            print '---> EXITING LANDING CAPTURE <--'
-                    else:
-                        print habOutput
+
+except (KeyboardInterrupt, SystemExit):
+    while habSerial.inWaiting() > 0:
+        habSerial.readline()
+    habSerial.close()
+    # Should I add mode_file = -1 here!?!?
+    sys.exit()

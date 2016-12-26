@@ -13,4 +13,4 @@ SUFFIX=".jpg"
 
 FILE=$PREFIX$CAMTYPE$DATE$SUFFIX
 
-fswebcam --no-banner -d /dev/video$1 -r 1920x1080 $FILE
+fswebcam --no-banner -d /dev/video$1 -r 1920x1080 -S 30 $FILE

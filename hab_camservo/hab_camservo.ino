@@ -6,13 +6,8 @@
 
 const bool debugMode = true;
 
-<<<<<<< HEAD
-const int servoPin = 2;
-const int controlInput = 3;
-=======
 const int controlInput = 2;
 const int servoPin = 3;
->>>>>>> eebd1c6c00a666498e8dce801458344e7e3e54ca
 
 int servoPositionOut = 20;
 int servoPositionIn = 80; // Need to test to obtain proper value

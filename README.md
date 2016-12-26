@@ -14,6 +14,10 @@ TO DO:
 - AT YOUR OWN RISK...try reintegrating dual webcam capture -- Original test was run without independent Arduino power (power provided by RPi)
 
 Pre-launch Checklist:
+- Disable bluetooth and WiFi (and other power-using modules) to save power [THIS SHOULD ALREADY BE COMPLETE...CHECK]
+- Glue down-facing webcam into static position
+- Change all hab_camcontrol.py timeout values
+- Change all other "debug" values
 - Burn-in gas sensors for 24-48 hours
 - Set: debugMode = false
 - Set: debugSmsOff = false
