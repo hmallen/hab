@@ -1,0 +1,39 @@
+LAUNCH ITEM CHECKLIST:
+
+- Payload
+
+- Nylon cord
+- Parachute
+- Balloon
+- Zip ties
+- Gaffer tape
+- Lighter (preferably wind-proof/butane)
+
+- Large tarp
+- Gas cylinder
+- Regulator/valve
+- Balloon filler
+- Scale
+- Gallon milk jug (Empty)
+- Gallon milk jug (Full)
+- Printed neck lift calculation
+- Scissors
+- Wire cutters
+- Latex gloves
+
+- Computer/Charger
+- Power inverter
+- Handheld radio
+- SDR
+- Mobile antenna
+- SDR --> Antenna adapter
+
+- Telescopic pole with hook
+- Carrier bag for balloon remnants
+- Flashlight
+
+Optional #1:
+- Car WiFi (tethering/3G dongle/etc.)
+
+Optional #2
+- Car GPS to upload to map

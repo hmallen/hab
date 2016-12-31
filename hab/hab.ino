@@ -41,10 +41,8 @@
   2 --> Landing phase
 
   TO DO:
-  - Add more EEPROM switches for all capture/phase states
+  - Add phase and additional information to logging
   - ADD TIMEOUT TO MAKE SURE THAT FINAL LANDING COORDINATE ARE SENT
-  - ADD NECESSARY BOOLEAN SWITCHES TO RESUME WHERE LEFT AFTER REBOOT
-  - ADD PHASE BOOLEAN CHANGES IF PHASE CHANGES OUT OF LOOP
   - MUST FIND FUNCTION TO CONFIRM GPRS POWER TO RESTART IF NECESSARY!!!! ****
   - Confirm that GPS coordinates are sent with highest precision (i.e. 6 floating point decimals)
   - Add check and retry for MS5607 data validity (every so often a bad value appears) ****
@@ -216,6 +214,17 @@ bool landingCapture = false;
 bool resetHandler = false;
 unsigned long photoDeployStart;
 bool selfieRetract = false;
+int rttyFlightPhase = 0;
+/*
+   RTTY Flight Phase Output:
+   0 --> Pre-takeoff capture
+   1 --> Takeoff capture
+   2 --> Post-takeoff capture
+   3 --> Peak capture
+   4 --> Descent phase
+   5 --> Landing capture
+   6 --> Landing phase
+*/
 
 // Old values to process with checkChange() function
 float gpsLatLast, gpsLngLast, gpsAltLast, ms5607PressLast, dofAltLast;
@@ -619,6 +628,14 @@ void setup() {
     landingPhase = EEPROM.read(5);
     resetHandler = EEPROM.read(6);
     selfieRetract = EEPROM.read(7);
+
+    if (landingPhase) rttyFlightPhase = 6;
+    else if (landingCapture) rttyFlightPhase = 5;
+    else if (descentPhase) rttyFlightPhase = 4;
+    else if (peakCapture) rttyFlightPhase = 3;
+    else if (takeoffCapture) rttyFlightPhase = 2;
+    else if (takeoffCapture && !peakCapture) rttyFlightPhase = 1;
+    else rttyFlightPhase = 0;
 
     if (debugMode) {
       Serial.println("EEPROM Values:");
@@ -1424,6 +1441,7 @@ void checkChange() {
     // LAUNCH CAPTURE ACTIVATED AUTOMATICALLY
     if (!takeoffCapture) {
       // START LAUNCH CAP --> resetHandler = true ["2"]
+      rttyFlightPhase = 1;
       Serial.println("$1");
       digitalWrite(gpsReadyLED, HIGH);
       takeoffCapture = true;
@@ -1439,6 +1457,7 @@ void checkChange() {
         //// END LAUNCH CAP ["3"]
         if ((dofAlt - dofAltOffset) > LAUNCHCAPTURETHRESHOLD || !debugState) {
           if (!debugState) debugBlink();
+          rttyFlightPhase = 2;
           Serial.println("$0");
           digitalWrite(gpsReadyLED, LOW);
           resetHandler = false;
@@ -1455,6 +1474,7 @@ void checkChange() {
         //// resetHandler = true ["4"]
         if (dofPressure < PEAKCAPTURETHRESHOLD || !debugState) {
           if (!debugState) debugBlink();
+          rttyFlightPhase = 3;
           Serial.println("$2");
           digitalWrite(programStartLED, HIGH);
           digitalWrite(photoDeployPin, LOW);  // DEPLOYMENT OF SPACE SELFIE!!!!
@@ -1492,6 +1512,7 @@ void checkChange() {
         }
 
         if (descentPhase) {
+          rttyFlightPhase = 4;
           Serial.println("$3");
           digitalWrite(programStartLED, LOW);
           EEPROM.write(3, 1);
@@ -1538,6 +1559,7 @@ void checkChange() {
         Serial.println("$3");
         digitalWrite(gpsReadyLED, HIGH);
         landingCapture = true;
+        rttyFlightPhase = 5;
         EEPROM.update(4, 1);
         resetHandler = true;
         EEPROM.update(6, 1);
@@ -1570,6 +1592,7 @@ void checkChange() {
 
   // LANDING PHASE
   else if (landingPhase && resetHandler) {
+    rttyFlightPhase = 6;
     Serial.println("$4");
     digitalWrite(gpsReadyLED, LOW);
     EEPROM.update(5, 1);
@@ -2094,6 +2117,7 @@ void rttyProcessTx() {
   char dofTempChar[10];
   char dhtTempChar[10];
   char dhtHumidityChar[10];
+  char rttyFlightPhaseChar[10];
   char commaChar[] = ",";
 
   sprintf(rttyTxString, callsignHeader);
@@ -2126,6 +2150,9 @@ void rttyProcessTx() {
   strcat(rttyTxString, commaChar);
   dtostrf(dhtHumidity, 2, 2, dhtHumidityChar);
   strcat(rttyTxString, dhtHumidityChar);
+  strcat(rttyTxString, commaChar);
+  sprintf(rttyFlightPhaseChar, "%i", rttyFlightPhase);
+  strcat(rttyTxString, rttyFlightPhaseChar);
   strcat(rttyTxString, commaChar);
 
   unsigned int CHECKSUM = rttyCRC16Checksum(rttyTxString);
