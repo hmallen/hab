@@ -4,15 +4,12 @@
    Test Values:
    - Servo MIN = ~20
    - Servo MAX = ~160
-
-   Positions:
-   - Retracted = 20
-   - Deployed = 100
 */
 
 #include <Servo.h>
 
 const bool debugMode = true;
+const bool debugPosTestMode = true;
 
 const int controlInput = 2;
 const int servoPin = 3;
@@ -54,15 +51,54 @@ void setup() {
     Serial.println(servoPosition);
   }
 
-  for (int x = 20; x <= servoPosDeploy; x++) {
-    camServo.write(x);
-    delay(25);
-  }
+  if (debugPosTestMode) {
+    delay(5000);
 
-  while (true) {
-    ;
+    Serial.println("Servo --> 90");
+    for (int x = 20; x <= 90; x++) {
+      camServo.write(x);
+      delay(25);
+    }
+
+    delay(5000);
+
+    Serial.println("Servo --> 100");
+    for (int x = 90; x <= 100; x++) {
+      camServo.write(x);
+      delay(25);
+    }
+
+    delay(5000);
+
+    Serial.println("Servo --> 110");
+    for (int x = 100; x <= 110; x++) {
+      camServo.write(x);
+      delay(25);
+    }
+
+    delay(5000);
+
+    Serial.println("Servo --> 120");
+    for (int x = 110; x <= 120; x++) {
+      camServo.write(x);
+      delay(25);
+    }
+
+    delay(5000);
+
+    Serial.println("Moving to start position. Servo --> 20");
+    for (int x = 120; x >= 20; x--) {
+      camServo.write(x);
+      delay(25);
+    }
+
+    Serial.println("Testing complete.");
+
+    while (true) {
+      ;
+    }
   }
-} 
+}
 
 void loop() {
   delay(100);
