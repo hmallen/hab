@@ -104,8 +104,8 @@
 
 // Definitions
 #define GPSHDOPTHRESHOLD 200  // Change to 120 for live conditions????
-//#define GASSENSORWARMUP 300000  // Gas sensor warm-up time (ms)
-#define GASSENSORWARMUP 30000 // For field stress testing
+#define GASSENSORWARMUP 300000  // Gas sensor warm-up time (ms)
+//#define GASSENSORWARMUP 30000 // For field stress testing
 #define DOFDATAINTERVAL 500 // Update interval (ms) for Adafruit 1604 data
 #define AUXDATAINTERVAL 5000 // Update interval (ms) for data other than that from Adafruit 1604
 #define GPSDATAINTERVAL 15000 // Update interval (ms) for GPS data updates
@@ -116,9 +116,9 @@
 #define GPSCHANGETHRESHOLD 5.0 // Negative altitude change (m) from GPS to signify real altitude decrease
 #define HEATERTRIGGERTEMP 0.0  // Temperature (C) below which internal payload heater activated
 #define BUZZERACTIVETIME 30000  // Time (ms) that buzzer remains active after triggered by SMS command
-#define LAUNCHCAPTURETHRESHOLD 1000.0
-#define PEAKCAPTURETHRESHOLD 500.0  // NEED TO CHANGE!!!!
-#define LANDINGCAPTURETHRESHOLD 3000.0
+#define LAUNCHCAPTURETHRESHOLD 5000.0
+#define PEAKCAPTURETHRESHOLD 28.0  // NEED TO CHANGE!!!!
+#define LANDINGCAPTURETHRESHOLD 5000.0
 #define PHOTODEPLOYTIME 240000
 
 //#define DAYLIGHTSAVINGS
@@ -131,8 +131,8 @@ const int gpsTimeOffset = -5;
 
 // DEBUG
 const bool debugMode = false;
-const bool debugSmsOff = true;
-const bool debugHeaterOff = true;
+const bool debugSmsOff = false;
+const bool debugHeaterOff = false;
 //const bool debugInputMode = true;
 const int debugLED = 13;
 const int debugHeaterPin = A1;
@@ -2231,8 +2231,3 @@ void startupFailure() {
     delay(100);
   }
 }
-
-void ledControl(char *ledColor) {
-
-}
-

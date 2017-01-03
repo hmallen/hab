@@ -12,7 +12,8 @@
 
 #include <Servo.h>
 
-const bool debugMode = true;
+const bool debugMode = false;
+const bool servoTesting = false;
 
 const int controlInput = 2;
 const int servoPin = 3;
@@ -29,7 +30,7 @@ void setup() {
   Serial.begin(9600);
 
   int servoPosition = camServo.read();
-  if (debugMode) {
+  if (servoTesting) {
     Serial.print("Servo position: ");
     Serial.println(servoPosition);
     Serial.print("Moving servo to start position...");
@@ -48,21 +49,23 @@ void setup() {
     }
   }
   servoPosition = camServo.read();
-  if (debugMode) {
+  if (servoTesting) {
     Serial.println("complete.");
     Serial.print("Servo position: ");
     Serial.println(servoPosition);
-  }
 
-  for (int x = 20; x <= servoPosDeploy; x++) {
-    camServo.write(x);
-    delay(25);
-  }
+    delay(5000);
 
-  while (true) {
-    ;
+    for (int x = servoPosRetract; x <= servoPosDeploy; x++) {
+      camServo.write(x);
+      delay(25);
+    }
+
+    while (true) {
+      ;
+    }
   }
-} 
+}
 
 void loop() {
   delay(100);
