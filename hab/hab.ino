@@ -24,62 +24,27 @@
   #3 --> Pin 5
   #4 --> Pin 4
 
-  Gas Sensors:
-  MQ-2 --> A7
-  MQ-3 --> A8
-  MQ-4 --> A9
-  MQ-5 --> A10
-  MQ-6 --> A11
-  MQ-7 --> A12
-  MQ-8 --> A13
-  MQ-9 --> A14
-  MQ135 --> A15
-
-  EEPROM Values:
-  0 --> Setup complete
-  1 --> Descent phase
-  2 --> Landing phase
-
   TO DO:
   - Add phase and additional information to logging
   - ADD TIMEOUT TO MAKE SURE THAT FINAL LANDING COORDINATE ARE SENT
-  - MUST FIND FUNCTION TO CONFIRM GPRS POWER TO RESTART IF NECESSARY!!!! ****
   - Confirm that GPS coordinates are sent with highest precision (i.e. 6 floating point decimals)
-  - Add check and retry for MS5607 data validity (every so often a bad value appears) ****
   - Add DS1820B data validity check to prevent accidental relay trip
   -- Also add startup check function (i.e. In initSensors())
   - On SMS startup, input current SLP to provide altimeter offset????
-  - Handling of gas sensor logging after sensor shut-off!!!!
-  - Determine pressure value to trigger peak capture (Reference press vs. alt table & balloon data)
   - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
   - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
-  - Add RTTY test TX before SMS confirmation?
   - Add MS5607 altitude????
-  - Confirm that boolean argument in smsPower function actually necessary
-  - Test if SMS stores in buffer when no signal and sends when reconnected
-  - Add check to confirm GPRS is powered on (Need to find suitable function)
-  -- Also check if similar function to indicate network connectivity
   - Gather sender number and log incoming/outgoing SMS messages to SD card
-  - Consider setting sampling rate based on theoretical ascent rate
-  - Change global variables to functions returning pointer arrays
 
   CONSIDERATIONS:
   - If Python script function timeouts could potentially cause gaps in media acquisition if malfunctioning
-  - Setting SD to SPI_FULL_SPEED
   - Inclusion of additional startup SMS output (gas sensor warmup, etc.)
-  - Safer to power GPRS before other things to ensure network connectivity?
-  - Check if system resets if on external power and serial (computer debugging) is unplugged
   - Gas sensor calibration
-  - Possible to use SMS command to reset system or place into "recovery" mode?
-  - Create LED flashes to indicate specific startup failure
-  - Check if break in DOF logging for other data affects reconstruction
-  -- Create program (?Python?) to extrapolate and fill in gaps ["smoothing function"]
 
   LESSONS LEARNED:
   - I2C device failures (first observed w/ MS5607 CRC4 check fail) likely due to poor jumper/breadboard wiring
   - Debug logging of SMS data currently breaks SMS functions if executed immediately prior
   - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
-  - ??Must allow to pass through first loop before sending SMS command or it will be flushed??
 */
 
 // Libraries
@@ -93,7 +58,6 @@
 #include <MS5xxx.h>
 #include <OneWire.h>
 #include <SdFat.h>
-//#include <SHT1x.h>
 #include <SPI.h>
 #include <TimeLib.h>
 #include <TinyGPS++.h>
@@ -101,7 +65,7 @@
 #include <Wire.h>
 
 // Definitions
-#define GPSHDOPTHRESHOLD 200  // Change to 120 for live conditions????
+#define GPSHDOPTHRESHOLD 120  // Change to 120 for live conditions????
 #define GASSENSORWARMUP 300000  // Gas sensor warm-up time (ms)
 //#define GASSENSORWARMUP 30000 // For field stress testing
 #define DOFDATAINTERVAL 500 // Update interval (ms) for Adafruit 1604 data
@@ -114,10 +78,10 @@
 #define GPSCHANGETHRESHOLD 5.0 // Negative altitude change (m) from GPS to signify real altitude decrease
 #define HEATERTRIGGERTEMP 0.0  // Temperature (C) below which internal payload heater activated
 #define BUZZERACTIVETIME 30000  // Time (ms) that buzzer remains active after triggered by SMS command
-#define LAUNCHCAPTURETHRESHOLD 5000.0
-#define PEAKCAPTURETHRESHOLD 28.0  // NEED TO CHANGE!!!!
-#define LANDINGCAPTURETHRESHOLD 5000.0
-#define PHOTODEPLOYTIME 240000
+#define LAUNCHCAPTURETHRESHOLD 5000.0 // Altitude (ft) below which launch capture will occur
+#define PEAKCAPTURETHRESHOLD 28.0 // Pressure (hPa) to trigger peak capture (~80,000 ft)
+#define LANDINGCAPTURETHRESHOLD 5000.0  // Altitude (ft) below which landing capture will occur
+#define PHOTODEPLOYTIME 240000  // Time (ms) for photo to remain deployed for selfie capture
 
 //#define DAYLIGHTSAVINGS
 
@@ -139,8 +103,6 @@ const int debugStatePin = A2;
 
 // Digital Pins
 const int chipSelect = SS;
-//const int shtData = 2;
-//const int shtClock = 3;
 const int dhtPin = 2;
 const int buzzerRelay = 4;
 const int heaterRelay = 5;  // Internal payload heater
@@ -264,13 +226,11 @@ TinyGPSPlus gps;
 OneWire ds(dsTempPin);
 
 // Data validation variables
-//bool dofValid, ms5607Valid, gpsValid, gasValid, shtValid, lightValid, dsValid;
 bool dofValid, ms5607Valid, gpsValid, gasValid, dhtValid, lightValid, dsValid;
 int ada1604Failures = 0;
 int gpsFailures = 0;
 int ms5607Failures = 0;
 int gasFailures = 0;
-//int shtFailures = 0;
 int dhtFailures = 0;
 int lightFailures = 0;
 int dsFailures = 0;
@@ -361,13 +321,6 @@ void initSensors() {
   }
   else {
     for (int x = 0; x < 5; ) {
-      /*float initShtTempC = sht.readTemperatureC();
-        delay(100);
-        float initShtTempF = sht.readTemperatureF();
-        delay(100);
-        float initShtHumidity = sht.readHumidity();
-        delay(100);*/
-
       delay(2000);
       t = dht.readTemperature();
       delay(500);
@@ -1067,35 +1020,6 @@ void loop() {
       Serial.println();
     }
   }
-  /*if (Serial1.available()) {
-    if (debugMode) Serial.println("Incoming GPRS serial data.");
-    char smsMessageRaw[128];
-    int x = 0;
-    while (Serial1.available()) {
-      char c = Serial1.read();
-      smsMessageRaw[x] = c;
-      x++;
-      delay(5);
-    }
-    if (debugMode) Serial.print("Processing GPRS data...");
-    smsHandler(smsMessageRaw, true, false);
-    if (debugMode) {
-      Serial.println("complete.");
-      Serial.println();
-    }
-    }*/
-
-  // if (smsCommandText[0] != '\0') {
-  /*if (!isAlphaNumeric(smsCommandText[0])) {
-    Serial.print("smsCommandText: ");
-      Serial.println(smsCommandText);
-      Serial.println("PROGRAM HALTED.");
-      while (true) {
-      ;
-      }
-      smsSendConfirmation();
-    smsFlush();
-    }*/
 
   if (isAlphaNumeric(smsCommandText[0])) {
     smsSendConfirmation();
@@ -1278,14 +1202,6 @@ bool readGas() {
   if (gasValues != gasValuesLast) return true;
   else return false;
 }
-
-/*bool readSht() {
-  shtTemp = sht.readTemperatureC();
-  shtHumidity = sht.readHumidity();
-
-  if (-100.0 <= shtTemp <= 100.0 && 0.0 <= shtHumidity <= 100.0) return true;
-  else return false;
-  }*/
 
 bool readDht() {
   dhtTemp = dht.readTemperature();
@@ -1909,7 +1825,6 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
     char c = smsMessageRaw[x];
     if (c == '"') {
       numIndex = x + 3;
-      //Serial.println(numIndex);
       break;
     }
   }
@@ -1919,7 +1834,6 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
     char c = smsMessageRaw[x];
     if (c == '"') {
       smsIndex = x + 29;
-      //Serial.println(smsIndex);
       break;
     }
   }
@@ -1935,7 +1849,6 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
     x++;
   }
   smsRecNumber[x] = '\0';
-  //Serial.println(smsRecNumber);
 
   x = 0;
   for (smsIndex; ; smsIndex++) {
@@ -1947,7 +1860,6 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
     smsMessage[x] = c;
     x++;
   }
-  //Serial.println(smsMessage);
 
   if (!debugMode) {
     char debugString[64];
@@ -1963,7 +1875,6 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
   }
 
   if (smsStartup) {
-    //if (smsMessage == "Ready") smsReadyReceived = true;
     char readyMessage[] = "Ready";
     for (x = 0; x < 5; x++) {
       if (smsMessage[x] == readyMessage[x]) smsReadyReceived = true;
@@ -1977,20 +1888,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
 
   else if (execCommand) {
     int smsCommand = 0;
-
-    //if (smsMessage.length() == 1) smsCommand = smsMessage.toInt();
-    /*int messageLength = 0;
-      for (x = 0; x < sizeof(smsMessage); x++) {
-      if (isAlphaNumeric(smsMessage[x])) messageLength++;
-      }
-      if (messageLength == 1) smsCommand = int(smsMessage[0]);
-      else; // Send SMS stating invalid command received (to incoming number)*/
-
     smsCommand = int(smsMessage[0]);
-    //if (debugMode) {
-    //Serial.print("smsCommand: ");
-    //Serial.println(smsCommand);
-    //}
 
     switch (smsCommand) {
       // LED
