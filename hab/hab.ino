@@ -84,7 +84,6 @@
 #define PHOTODEPLOYTIME 240000  // Time (ms) for photo to remain deployed for selfie capture
 
 //#define DAYLIGHTSAVINGS
-
 #ifdef DAYLIGHTSAVINGS
 const int gpsTimeOffset = -4;
 #else
@@ -95,11 +94,9 @@ const int gpsTimeOffset = -5;
 const bool debugMode = false;
 const bool debugSmsOff = false;
 const bool debugHeaterOff = false;
-//const bool debugInputMode = true;
 const int debugLED = 13;
 const int debugHeaterPin = A1;
 const int debugStatePin = A2;
-//bool debugState, debugHeaterState;
 
 // Digital Pins
 const int chipSelect = SS;
@@ -163,19 +160,29 @@ float gasValues[] = {
 float gasValuesLast[] = {
   0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 };
-//float shtTemp, shtHumidity;
 float dhtTemp, dhtHumidity;
 float lightVal;
 unsigned long buzzerStart;
 float dsTemp;
 
-// RPi Camera Triggers
-bool takeoffCapture = false;
-bool peakCapture = false;
-bool landingCapture = false;
-bool resetHandler = false;
+// Old values to process with checkChange() function
+float gpsLatLast, gpsLngLast, gpsAltLast, ms5607PressLast, dofAltLast;
+int gpsChanges = 0;
+int ms5607Changes = 0;
+int dofChanges = 0;
+
+
+// EEPROM Switches
+bool setupComplete = false; // EEPROM #0
+bool takeoffCapture = false;  // EEPROM #1
+bool peakCapture = false; // EEPROM #2
+bool descentPhase = false;  // EEPROM #3
+bool landingCapture = false;  // EEPROM #4
+bool landingPhase = false;  // EEPROM #5
+bool resetHandler = false;  // EEPROM #6
+bool selfieRetract = false; // EEPROM #7
+
 unsigned long photoDeployStart;
-bool selfieRetract = false;
 int rttyFlightPhase = 0;
 /*
    RTTY Flight Phase Output:
@@ -187,23 +194,6 @@ int rttyFlightPhase = 0;
    5 --> Landing capture
    6 --> Landing phase
 */
-
-// Old values to process with checkChange() function
-float gpsLatLast, gpsLngLast, gpsAltLast, ms5607PressLast, dofAltLast;
-int gpsChanges = 0;
-int ms5607Changes = 0;
-int dofChanges = 0;
-
-
-// EEPROM Switches
-bool setupComplete = false; // EEPROM #0
-// takeoffCapture --> EEPROM #1
-// peakCapture --> EEPROM #2
-bool descentPhase = false;  // EEPROM #3
-// landingCapture --> EEPROM #4
-bool landingPhase = false;  // EEPROM #5
-// resetHandler --> EEPROM #6
-// selfieRetract --> EEPROM #7
 
 int loopCount = 1;
 unsigned long dofLoopCount = 1;
@@ -1231,8 +1221,6 @@ bool readDs() {
     }
 
     if (OneWire::crc8(addr, 7) != addr[7]) {
-      //char debugString[32];
-      //sprintf(debugString, "DS18B20 CRC not valid.");
       char debugString[] = "DS18B20 CRC not valid.";
       logDebug(debugString);
       dsTemp = 0.0;
@@ -1385,7 +1373,7 @@ void checkChange() {
       else if (!resetHandler && !peakCapture) {
         // WAIT FOR TRIGGER (BELOW THRESHOLD PRESSURE) --> peakCapture = true
         // DEPLOY SELFIE SERVO
-        // WAIT FOR SERVO TIMEOUT [Should this be outside of loops to ensure that it's eventually called????]
+        // WAIT FOR SERVO TIMEOUT
         // RETRACT SELFIE SERVO
         //// resetHandler = true ["4"]
         if (dofPressure < PEAKCAPTURETHRESHOLD || !debugState) {
@@ -1633,13 +1621,10 @@ void logData(char *logType) {
       logFile.print(gasValues[x]);
       logFile.print(",");
     }
-    //logFile.print(shtValid);
     logFile.print(dhtValid);
     logFile.print(",");
-    //logFile.print(shtTemp);
     logFile.print(dhtTemp);
     logFile.print(",");
-    //logFile.print(shtHumidity);
     logFile.print(dhtHumidity);
     logFile.print(",");
     logFile.print(lightVal);
@@ -1828,8 +1813,9 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
       break;
     }
   }
+
   x++;
-  //for (int x = smsMessageRawSize; ; x--) {
+
   for (x; ; x++) {
     char c = smsMessageRaw[x];
     if (c == '"') {
@@ -1839,6 +1825,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
   }
 
   x = 0;
+
   for (numIndex; ; numIndex++) {
     char c = smsMessageRaw[numIndex];
     if (c == '"') {
@@ -1851,6 +1838,7 @@ void smsHandler(char smsMessageRaw[], bool execCommand, bool smsStartup) {
   smsRecNumber[x] = '\0';
 
   x = 0;
+
   for (smsIndex; ; smsIndex++) {
     char c = smsMessageRaw[smsIndex];
     if (c == '\n' || c == '\r') {
