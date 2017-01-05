@@ -678,8 +678,6 @@ void setup() {
       Serial.println();
     }
 
-    //smsPower(false);
-
     for (int x = 0; x < 2; x++) {
       digitalWrite(programStartLED, HIGH);
       delay(100);
@@ -715,12 +713,13 @@ void setup() {
     }
 
     Serial.println("$0");
-    //if (!debugMode) {
+
     if (!Serial.available()) {
       while (!Serial.available()) {
         ;
       }
     }
+
     while (true) {
       if (Serial.available()) {
         char cameraInput[6];
