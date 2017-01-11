@@ -48,7 +48,7 @@ void loop() {
     delay(25);
   }
 
-  delay(2500);
+  delay(4000);
 
   for (int x = servoPosDeploy; x >= servoPosRetract; x--) {
     camServo.write(x);
