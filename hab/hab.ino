@@ -12,7 +12,6 @@
   - GPS
   - Gas Sensors
   - Temp/Humidity (SHT11)
-  - Light
   - Adafruit 1604 (DOF)
   -- Accelerometer/Gyroscope/Magnetometer
   -- Barometer (Altitude/Temperature) [BMP180]
@@ -118,7 +117,7 @@ const int gpsReadyLED = 28; // Multi-color LED round-side input [Green]
 const int programStartLED = 29; // Multi-color LED flat-side input [Red]
 
 // Analog Pins
-const int lightPin = A0;
+//const int lightPin = A0;
 //const int gasPins[] = {A7, A8, A9, A10, A11, A12, A13, A14, A15};
 const int gasPins[] = {
   A8, A9, A10, A11, A12, A13
@@ -161,7 +160,7 @@ float gasValuesLast[] = {
   0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 };
 float dhtTemp, dhtHumidity;
-float lightVal;
+//float lightVal;
 unsigned long buzzerStart;
 float dsTemp;
 
@@ -216,13 +215,14 @@ TinyGPSPlus gps;
 OneWire ds(dsTempPin);
 
 // Data validation variables
-bool dofValid, ms5607Valid, gpsValid, gasValid, dhtValid, lightValid, dsValid;
+//bool dofValid, ms5607Valid, gpsValid, gasValid, dhtValid, lightValid, dsValid;
+bool dofValid, ms5607Valid, gpsValid, gasValid, dhtValid, dsValid;
 int ada1604Failures = 0;
 int gpsFailures = 0;
 int ms5607Failures = 0;
 int gasFailures = 0;
 int dhtFailures = 0;
-int lightFailures = 0;
+//int lightFailures = 0;
 int dsFailures = 0;
 
 void initSensors() {
@@ -878,7 +878,7 @@ void loop() {
       }
     }
 
-    lightValid = readLight();
+    /*lightValid = readLight();
     if (!lightValid) {
       lightFailures++;
       if (debugMode) {
@@ -894,7 +894,7 @@ void loop() {
         strcat(debugChar, lightFailuresChar);
         logDebug(debugChar);
       }
-    }
+    }*/
 
     dsValid = readDs();
     if (!dsValid) {
@@ -1201,11 +1201,11 @@ bool readDht() {
   else return false;
 }
 
-bool readLight() {
+/*bool readLight() {
   lightVal = (float)map((1023 - analogRead(lightPin)), 0, 1023, 0, 1000) / 10.0;
   if (0.0 <= lightVal <= 100.0) return true;
   else return false;
-}
+}*/
 
 bool readDs() {
   bool dsReadCheck = false;
@@ -1626,8 +1626,8 @@ void logData(char *logType) {
     logFile.print(",");
     logFile.print(dhtHumidity);
     logFile.print(",");
-    logFile.print(lightVal);
-    logFile.print(",");
+    //logFile.print(lightVal);
+    //logFile.print(",");
     logFile.println(dsTemp);
   }
   else if (logType == "gps") {
@@ -1756,9 +1756,9 @@ void debugAuxPrint() {
   Serial.print("C, ");
   Serial.print(dhtHumidity);
   Serial.println("%RH");
-  Serial.print("Light: ");
-  Serial.print(lightVal);
-  Serial.println("%");
+  //Serial.print("Light: ");
+  //Serial.print(lightVal);
+  //Serial.println("%");
   Serial.print("DS18B20: ");
   Serial.print(dsTemp);
   Serial.println("C");
