@@ -118,3 +118,55 @@ LESSONS LEARNED:
 - Debug logging of SMS data currently breaks SMS functions if executed immediately prior
 - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
 - ??Must allow to pass through first loop before sending SMS command or it will be flushed??
+
+-------------------------------------------------------------------------------------------------------------------
+
+PROGRAM HEADER (1-20-17):
+
+/*
+   High-Altitude Balloon
+
+  Features:
+  - Sensor data acquisition
+  - Relay control
+  - SD data logging
+  - SSB RTTY transmission of position information at 434.250MHz
+  - SMS notifications
+
+  Sensors:
+  - GPS
+  - Gas Sensors
+  - Temp/Humidity (SHT11)
+  - Adafruit 1604 (DOF)
+  -- Accelerometer/Gyroscope/Magnetometer
+  -- Barometer (Altitude/Temperature) [BMP180]
+  - MS5607 Barometer/Altimeter
+
+  Relay Control:
+  #1 --> Pin 7 (Gas sensors)
+  #2 --> Pin 6 (Internal payload heater)
+  #3 --> Pin 5
+  #4 --> Pin 4
+
+  TO DO:
+  - Add phase and additional information to logging
+  - ADD TIMEOUT TO MAKE SURE THAT FINAL LANDING COORDINATE ARE SENT
+  - Confirm that GPS coordinates are sent with highest precision (i.e. 6 floating point decimals)
+  - Add DS1820B data validity check to prevent accidental relay trip
+  -- Also add startup check function (i.e. In initSensors())
+  - On SMS startup, input current SLP to provide altimeter offset????
+  - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
+  - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
+  - Add MS5607 altitude????
+  - Gather sender number and log incoming/outgoing SMS messages to SD card
+
+  CONSIDERATIONS:
+  - If Python script function timeouts could potentially cause gaps in media acquisition if malfunctioning
+  - Inclusion of additional startup SMS output (gas sensor warmup, etc.)
+  - Gas sensor calibration
+
+  LESSONS LEARNED:
+  - I2C device failures (first observed w/ MS5607 CRC4 check fail) likely due to poor jumper/breadboard wiring
+  - Debug logging of SMS data currently breaks SMS functions if executed immediately prior
+  - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
+*/
