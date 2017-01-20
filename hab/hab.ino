@@ -1,50 +1,6 @@
 /*
-   High-Altitude Balloon
-
-  Features:
-  - Sensor data acquisition
-  - Relay control
-  - SD data logging
-  - SSB RTTY transmission of position information at 434.250MHz
-  - SMS notifications
-
-  Sensors:
-  - GPS
-  - Gas Sensors
-  - Temp/Humidity (SHT11)
-  - Adafruit 1604 (DOF)
-  -- Accelerometer/Gyroscope/Magnetometer
-  -- Barometer (Altitude/Temperature) [BMP180]
-  - MS5607 Barometer/Altimeter
-
-  Relay Control:
-  #1 --> Pin 7 (Gas sensors)
-  #2 --> Pin 6 (Internal payload heater)
-  #3 --> Pin 5
-  #4 --> Pin 4
-
-  TO DO:
-  - Add phase and additional information to logging
-  - ADD TIMEOUT TO MAKE SURE THAT FINAL LANDING COORDINATE ARE SENT
-  - Confirm that GPS coordinates are sent with highest precision (i.e. 6 floating point decimals)
-  - Add DS1820B data validity check to prevent accidental relay trip
-  -- Also add startup check function (i.e. In initSensors())
-  - On SMS startup, input current SLP to provide altimeter offset????
-  - TURN ON ROAMING BEFORE LIVE LAUNCH TO ENSURE PRESENCE OF GPRS NETWORK CONNECTION
-  - CHANGE GAS SENSOR WARMUP BACK TO NORMAL BEFORE LIVE LAUNCH
-  - Add MS5607 altitude????
-  - Gather sender number and log incoming/outgoing SMS messages to SD card
-
-  CONSIDERATIONS:
-  - If Python script function timeouts could potentially cause gaps in media acquisition if malfunctioning
-  - Inclusion of additional startup SMS output (gas sensor warmup, etc.)
-  - Gas sensor calibration
-
-  LESSONS LEARNED:
-  - I2C device failures (first observed w/ MS5607 CRC4 check fail) likely due to poor jumper/breadboard wiring
-  - Debug logging of SMS data currently breaks SMS functions if executed immediately prior
-  - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
-*/
+ * Icarus ONE: High-altitude Balloon
+ */
 
 // Libraries
 #include <Adafruit_Sensor.h>
@@ -117,8 +73,6 @@ const int gpsReadyLED = 28; // Multi-color LED round-side input [Green]
 const int programStartLED = 29; // Multi-color LED flat-side input [Red]
 
 // Analog Pins
-//const int lightPin = A0;
-//const int gasPins[] = {A7, A8, A9, A10, A11, A12, A13, A14, A15};
 const int gasPins[] = {
   A8, A9, A10, A11, A12, A13
 };
@@ -151,16 +105,13 @@ float magX, magY, magZ;
 float dofRoll, dofPitch, dofHeading;
 float dofPressure, dofTemp, dofAlt, dofAltOffset;
 float ms5607Temp, ms5607Press;
-//float gasValues[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float gasValues[] = {
   0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 };
-//float gasValuesLast[] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 float gasValuesLast[] = {
   0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 };
 float dhtTemp, dhtHumidity;
-//float lightVal;
 unsigned long buzzerStart;
 float dsTemp;
 
@@ -215,14 +166,12 @@ TinyGPSPlus gps;
 OneWire ds(dsTempPin);
 
 // Data validation variables
-//bool dofValid, ms5607Valid, gpsValid, gasValid, dhtValid, lightValid, dsValid;
 bool dofValid, ms5607Valid, gpsValid, gasValid, dhtValid, dsValid;
 int ada1604Failures = 0;
 int gpsFailures = 0;
 int ms5607Failures = 0;
 int gasFailures = 0;
 int dhtFailures = 0;
-//int lightFailures = 0;
 int dsFailures = 0;
 
 void initSensors() {
@@ -878,24 +827,6 @@ void loop() {
       }
     }
 
-    /*lightValid = readLight();
-    if (!lightValid) {
-      lightFailures++;
-      if (debugMode) {
-        Serial.print("Failed to read light sensor. Count=");
-        Serial.println(lightFailures);
-      }
-      else {
-        char debugChar[64];
-        char lightFailuresChar[6];
-        char debugPrefix[] = "Failed to read light sensor. Count=";
-        sprintf(debugChar, debugPrefix);
-        sprintf(lightFailuresChar, "%i", lightFailures);
-        strcat(debugChar, lightFailuresChar);
-        logDebug(debugChar);
-      }
-    }*/
-
     dsValid = readDs();
     if (!dsValid) {
       dsFailures++;
@@ -1200,12 +1131,6 @@ bool readDht() {
   if (!isnan(dhtTemp) && !isnan(dhtHumidity)) return true;
   else return false;
 }
-
-/*bool readLight() {
-  lightVal = (float)map((1023 - analogRead(lightPin)), 0, 1023, 0, 1000) / 10.0;
-  if (0.0 <= lightVal <= 100.0) return true;
-  else return false;
-}*/
 
 bool readDs() {
   bool dsReadCheck = false;
@@ -1626,8 +1551,6 @@ void logData(char *logType) {
     logFile.print(",");
     logFile.print(dhtHumidity);
     logFile.print(",");
-    //logFile.print(lightVal);
-    //logFile.print(",");
     logFile.println(dsTemp);
   }
   else if (logType == "gps") {
@@ -1756,9 +1679,6 @@ void debugAuxPrint() {
   Serial.print("C, ");
   Serial.print(dhtHumidity);
   Serial.println("%RH");
-  //Serial.print("Light: ");
-  //Serial.print(lightVal);
-  //Serial.println("%");
   Serial.print("DS18B20: ");
   Serial.print(dsTemp);
   Serial.println("C");
