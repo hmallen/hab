@@ -30,6 +30,8 @@ Considerations:
 
 ------------------------------------------------------------------------------------------------------------------
 
+##Arduino Mega Header
+
 Features:
 - Sensor data acquisition
 - Relay control
