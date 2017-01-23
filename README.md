@@ -121,9 +121,9 @@ LESSONS LEARNED:
 - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
 - ??Must allow to pass through first loop before sending SMS command or it will be flushed??
 
--------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------
 
-PROGRAM HEADER (1-20-17):
+##Arduino Mega Header
 
 /*
    High-Altitude Balloon
@@ -172,3 +172,30 @@ PROGRAM HEADER (1-20-17):
   - Debug logging of SMS data currently breaks SMS functions if executed immediately prior
   - All connections within reset circuit must be firmly secured or false resets/none on serial monitor opening occur
 */
+
+------------------------------------------------------------------------------------------------------------------
+
+##Arduino Nano Header
+
+   Servo driver for in-flight photo shoot
+
+   Test Values:
+   - Servo MIN = ~20
+   - Servo MAX = ~160
+
+   Positions:
+   - Retracted = 20
+   - Deployed = 100
+
+------------------------------------------------------------------------------------------------------------------
+
+##Arduino Uno Header
+
+  Features:
+  - Listens for "heartbeat" signal between sensor reads by Arduino Mega
+  - Stores current program state in EEPROM
+  - Triggers reset and restoration of program state if Arduino Mega stalls
+
+  Considerations:
+  - Count quick, repetitive pulses to read state of Arduino Mega
+  - HEARTBEAT LED OUTPUT CAUSES VOLTAGE DROP IN GPRS!!!!
