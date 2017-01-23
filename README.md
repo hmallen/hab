@@ -123,7 +123,7 @@ LESSONS LEARNED:
 
 ------------------------------------------------------------------------------------------------------------------
 
-##Arduino Mega Header
+##Arduino Mega Header (1-20-17)
 
 /*
    High-Altitude Balloon
@@ -175,7 +175,7 @@ LESSONS LEARNED:
 
 ------------------------------------------------------------------------------------------------------------------
 
-##Arduino Nano Header
+##Arduino Nano Header (1-20-17)
 
    Servo driver for in-flight photo shoot
 
@@ -189,7 +189,7 @@ LESSONS LEARNED:
 
 ------------------------------------------------------------------------------------------------------------------
 
-##Arduino Uno Header
+##Arduino Uno Header (1-20-17)
 
   Features:
   - Listens for "heartbeat" signal between sensor reads by Arduino Mega
