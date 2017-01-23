@@ -1,14 +1,5 @@
 /*
   HAB Heartbeat
-
-  Features:
-  - Listens for "heartbeat" signal between sensor reads by Arduino Mega
-  - Stores current program state in EEPROM
-  - Triggers reset and restoration of program state if Arduino Mega stalls
-
-  Considerations:
-  - Count quick, repetitive pulses to read state of Arduino Mega
-  - HEARTBEAT LED OUTPUT CAUSES VOLTAGE DROP IN GPRS!!!!
 */
 
 #include <avr/wdt.h>

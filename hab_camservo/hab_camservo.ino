@@ -1,13 +1,5 @@
 /*
    Servo driver for in-flight photo shoot
-
-   Test Values:
-   - Servo MIN = ~20
-   - Servo MAX = ~160
-
-   Positions:
-   - Retracted = 20
-   - Deployed = 100
 */
 
 #include <Servo.h>
