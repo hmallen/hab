@@ -321,5 +321,6 @@ except (KeyboardInterrupt, SystemExit):
     while habSerial.inWaiting() > 0:
         habSerial.readline()
     habSerial.close()
-    # Should I add mode_file = -1 here!?!?
+    #with open('mode_file.txt', 'w') as mode_file:  # If flight phase reset desired on keyboard interrupt
+    #    mode_file.write("-1")
     sys.exit()
