@@ -1,5 +1,7 @@
 # High-Altitude Balloon
 
+High-altitude balloon telemetry, communication, and tracking (2 x GPS modules and Google Maps formatted links sent by SMS) system with additional features added for fun. Runs multiple Arduinos and a Raspberry Pi, all capable of inter-device communication, to control photography, tracking, SMS control and alert messages, and radio transmitter.
+
 TO DO:
 - Add clean-up of camera functions on Python exception
 - Add a couple PiCam video captures to each phase
